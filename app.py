@@ -1,119 +1,128 @@
 import streamlit as st
 from datetime import date
 
-# إعدادات الصفحة
+# إعداد الصفحة
 st.set_page_config(page_title="حاسبة الفروقات الوظيفية", layout="wide")
 
 st.markdown("""
 <style>
-.main { direction: rtl; text-align: right; }
+.main {direction: rtl; text-align: right;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 نظام حساب الفروقات الوظيفية (مطابق للإكسل)")
+st.title("📊 حاسبة الفروقات الوظيفية (مطابقة للإكسل)")
 
-# --------------------------------------------------
-# دالة حساب الأشهر (مطابقة DATEDIF في Excel)
-# --------------------------------------------------
+# =========================
+# دالة حساب الأشهر (DATEDIF M)
+# =========================
 def calculate_months(start, end):
     if not start or not end or start >= end:
         return 0
     return (end.year - start.year) * 12 + (end.month - start.month)
 
-# --------------------------------------------------
-# المدخلات
-# --------------------------------------------------
-col1, col2 = st.columns(2)
+# =========================
+# الإدخالات
+# =========================
+c1, c2 = st.columns(2)
 
-with col1:
+with c1:
     st.subheader("💰 الرواتب")
-    old_salary = st.number_input("الراتب الاسمي القديم", value=0.0)
-    salary_1 = st.number_input("راتب العلاوة الأولى", value=0.0)
-    salary_2 = st.number_input("راتب العلاوة الثانية", value=0.0)
-    salary_3 = st.number_input("راتب العلاوة الثالثة", value=0.0)
-    salary_promotion = st.number_input("الراتب بعد الترفيع", value=0.0)
+    old_salary = st.number_input("الراتب قبل أي علاوة", min_value=0)
+    salary_1 = st.number_input("راتب العلاوة الأولى", min_value=0)
+    salary_2 = st.number_input("راتب العلاوة الثانية", min_value=0)
+    salary_3 = st.number_input("راتب العلاوة الثالثة", min_value=0)
+    salary_promotion = st.number_input("الراتب بعد الترفيع", min_value=0)
 
-    st.divider()
+ لاين
+
     degree = st.selectbox(
         "التحصيل العلمي",
         ["دكتوراه", "ماجستير", "بكالوريوس", "أخرى/أمية"]
     )
 
-with col2:
-    st.subheader("📅 التواريخ (غير إلزامية)")
+with c2:
+    st.subheader("📅 التواريخ")
     d1 = st.date_input("تاريخ العلاوة الأولى", value=None)
     d2 = st.date_input("تاريخ العلاوة الثانية", value=None)
     d3 = st.date_input("تاريخ العلاوة الثالثة", value=None)
     dp = st.date_input("تاريخ الترفيع", value=None)
     de = st.date_input("تاريخ نهاية الفترة", value=None)
 
-# --------------------------------------------------
-# حساب عدد الأشهر (حسب الإكسل)
-# --------------------------------------------------
-m1 = calculate_months(d1, d2)
-m2 = calculate_months(d2, d3)
-m3 = calculate_months(d3, dp)
-mp = calculate_months(dp, de)
-
-# --------------------------------------------------
-# الفروقات الاسمية (Excel logic)
-# --------------------------------------------------
-diff_nom_1 = (salary_1 - old_salary) * m1
-diff_nom_2 = (salary_2 - salary_1) * m2
-diff_nom_3 = (salary_3 - salary_2) * m3
-diff_nom_p = (salary_promotion - salary_3) * mp
-
-# --------------------------------------------------
-# نسبة الاستحقاق (مطابقة للإكسل)
-# --------------------------------------------------
+# =========================
+# نسبة الشهادة (مطابقة للإكسل)
+# =========================
 degree_rates = {
     "دكتوراه": 1.0,
     "ماجستير": 0.75,
-    "بكالوريوس": 0.5,
+    "بكالوريوس": 0.50,
     "أخرى/أمية": 0.0
 }
 rate = degree_rates[degree]
 
-# --------------------------------------------------
-# الفروقات العامة (الاسمي × النسبة)
-# --------------------------------------------------
-diff_gen_1 = diff_nom_1 * rate
-diff_gen_2 = diff_nom_2 * rate
-diff_gen_3 = diff_nom_3 * rate
-diff_gen_p = diff_nom_p * rate
+# =========================
+# منطق المراحل (مثل Excel)
+# =========================
+stages = []
 
-# المجاميع
-total_nominal = diff_nom_1 + diff_nom_2 + diff_nom_3 + diff_nom_p
-total_general = diff_gen_1 + diff_gen_2 + diff_gen_3 + diff_gen_p
+# علاوة 1
+if d1 and d2 and salary_1 > old_salary:
+    months = calculate_months(d1, d2)
+    stages.append({
+        "name": "العلاوة الأولى",
+        "months": months,
+        "nominal": (salary_1 - old_salary) * months
+    })
 
-# --------------------------------------------------
+# علاوة 2
+if d2 and d3 and salary_2 > salary_1:
+    months = calculate_months(d2, d3)
+    stages.append({
+        "name": "العلاوة الثانية",
+        "months": months,
+        "nominal": (salary_2 - salary_1) * months
+    })
+
+# علاوة 3
+if d3 and dp and salary_3 > salary_2:
+    months = calculate_months(d3, dp)
+    stages.append({
+        "name": "العلاوة الثالثة",
+        "months": months,
+        "nominal": (salary_3 - salary_2) * months
+    })
+
+# الترفيع
+if dp and de and salary_promotion > salary_3:
+    months = calculate_months(dp, de)
+    stages.append({
+        "name": "الترفيع",
+        "months": months,
+        "nominal": (salary_promotion - salary_3) * months
+    })
+
+# =========================
 # عرض النتائج
-# --------------------------------------------------
+# =========================
 st.divider()
-st.header("📋 النتائج التفصيلية")
+st.header("📋 تفاصيل الفروقات")
 
-res1, res2, res3 = st.columns(3)
+total_nominal = 0
+total_general = 0
 
-with res1:
-    st.subheader("🕒 عدد الأشهر")
-    st.write(f"العلاوة الأولى: {m1}")
-    st.write(f"العلاوة الثانية: {m2}")
-    st.write(f"العلاوة الثالثة: {m3}")
-    st.write(f"الترفيع: {mp}")
+if not stages:
+    st.warning("لم يتم إدخال بيانات كافية لأي علاوة أو ترفيع")
+else:
+    for s in stages:
+        general = s["nominal"] * rate
+        total_nominal += s["nominal"]
+        total_general += general
 
-with res2:
-    st.subheader("💰 الفرق الاسمي")
-    st.write(f"علاوة أولى: {diff_nom_1:,.0f}")
-    st.write(f"علاوة ثانية: {diff_nom_2:,.0f}")
-    st.write(f"علاوة ثالثة: {diff_nom_3:,.0f}")
-    st.write(f"ترفيع: {diff_nom_p:,.0f}")
-    st.metric("المجموع الاسمي", f"{total_nominal:,.0f}")
+        st.subheader(s["name"])
+        st.write("عدد الأشهر:", s["months"])
+        st.write("الفرق الاسمي:", f"{s['nominal']:,.0f}")
+        st.write("الفرق العام:", f"{general:,.0f}")
+        st.divider()
 
-with res3:
-    st.subheader("✅ الفرق العام (بعد النسبة)")
-    st.write(f"علاوة أولى: {diff_gen_1:,.0f}")
-    st.write(f"علاوة ثانية: {diff_gen_2:,.0f}")
-    st.write(f"علاوة ثالثة: {diff_gen_3:,.0f}")
-    st.write(f"ترفيع: {diff_gen_p:,.0f}")
-    st.metric("المجموع النهائي المستحق", f"{total_general:,.0f}")
-    st.caption(f"نسبة الاستحقاق: {int(rate*100)}%")
+    st.success("✅ النتيجة النهائية")
+    st.write("إجمالي الفرق الاسمي:", f"{total_nominal:,.0f}")
+    st.write("إجمالي الفرق العام (المستحق):", f"{total_general:,.0f}")
