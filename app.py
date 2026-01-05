@@ -1,102 +1,85 @@
 import streamlit as st
 from datetime import date
 
-# إعداد واجهة التطبيق
-st.set_page_config(page_title="حاسبة الفروقات الاحترافية", layout="wide")
+# إعداد الصفحة وتنسيقها
+st.set_page_config(page_title="حاسبة الفروقات الوظيفية - النسخة المطابقة", layout="wide")
 
-# تصميم الواجهة لتناسب اللغة العربية (RTL)
 st.markdown("""
 <style>
     .main {direction: rtl; text-align: right;}
     .stNumberInput, .stDateInput, .stSelectbox {direction: rtl;}
-    div[data-testid="stMetricValue"] { font-size: 25px; }
+    th {text-align: right !important;}
+    td {text-align: right !important;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚖️ نظام حساب الفروقات الوظيفية المعتمد")
-st.info("ملاحظة: هذا النظام مصمم ليتطابق مع معادلات ملف Excel 2026 الخاص بك.")
+st.title("⚖️ الحاسبة الوظيفية (مطابقة لملف 2026)")
 
-# دالة حساب الأشهر (منطق DATEDIF المعتمد في ملفك)
-def calculate_months(start, end):
+# دالة حساب الأشهر (منطق الإكسل DATEDIF)
+def get_m(start, end):
     if not start or not end or start >= end:
         return 0
     return (end.year - start.year) * 12 + (end.month - start.month)
 
-# --- قسم المدخلات ---
-col1, col2 = st.columns(2)
+# --- واجهة الإدخال ---
+c1, c2 = st.columns(2)
 
-with col1:
-    st.subheader("💰 البيانات المالية")
-    old_salary = st.number_input("الراتب الاسمي القديم (الأساسي)", value=250, help="هذا هو الراتب الذي يُطرح منه الرواتب الجديدة")
-    sal1 = st.number_input("راتب العلاوة 1", value=0)
-    sal2 = st.number_input("راتب العلاوة 2", value=0)
-    sal3 = st.number_input("راتب العلاوة 3", value=0)
-    sal_p = st.number_input("الراتب بعد الترفيع", value=0)
+with c1:
+    st.subheader("💰 الرواتب")
+    base_salary = st.number_input("الراتب الاسمي القديم", value=250)
+    sal1 = st.number_input("راتب العلاوة الأولى", value=260)
+    sal2 = st.number_input("راتب العلاوة الثانية", value=270)
+    sal3 = st.number_input("راتب العلاوة الثالثة (اختياري)", value=0)
+    sal_p = st.number_input("الراتب بعد الترفيع", value=300)
     
-    degree = st.selectbox("التحصيل العلمي (نسبة الشهادة)", ["دكتوراه (100%)", "ماجستير (75%)", "بكالوريوس (50%)", "أخرى/أمية (15%)"])
-    rates = {"دكتوراه (100%)": 1.0, "ماجستير (75%)": 0.75, "بكالوريوس (50%)": 0.50, "أخرى/أمية (15%)": 0.15}
-    current_rate = rates[degree]
+    degree = st.selectbox("الشهادة", ["دكتوراه", "ماجستير", "بكالوريوس", "أخرى/أمية/متوسطة"], index=3)
+    rate = {"دكتوراه": 1.0, "ماجستير": 0.75, "بكالوريوس": 0.50, "أخرى/أمية/متوسطة": 0.15}[degree]
 
-with col2:
+with c2:
     st.subheader("📅 التواريخ")
-    d1 = st.date_input("تاريخ العلاوة 1", value=None)
-    d2 = st.date_input("تاريخ العلاوة 2", value=None)
-    d3 = st.date_input("تاريخ العلاوة 3", value=None)
-    dp = st.date_input("تاريخ الترفيع", value=None)
-    de = st.date_input("تاريخ نهاية الفترة (أمر ضروري)", value=date(2024, 12, 1))
+    d1 = st.date_input("تاريخ العلاوة الأولى", value=date(2022, 6, 1))
+    d2 = st.date_input("تاريخ العلاوة الثانية", value=date(2023, 1, 1))
+    d3 = st.date_input("تاريخ العلاوة الثالثة", value=None)
+    dp = st.date_input("تاريخ الترفيع", value=date(2024, 6, 1))
+    de = st.date_input("تاريخ نهاية الفترة", value=date(2024, 12, 1))
 
-# --- منطق الحساب القافز (Skipping Logic) ---
-# هذا المنطق يحدد تاريخ نهاية كل مرحلة بناءً على توفر التاريخ الذي يليه
-next1 = d2 if d2 else (d3 if d3 else (dp if dp else de))
-next2 = d3 if d3 else (dp if dp else de)
-next3 = dp if dp else de
+# --- منطق الحساب القفزي المطابق للإكسل ---
+# تحديد تاريخ نهاية كل مرحلة (إذا كان تاريخ العلاوة التالية مفقود، يأخذ تاريخ الترفيع)
+end_m1 = d2 if d2 else (d3 if d3 else (dp if dp else de))
+end_m2 = d3 if d3 else (dp if dp else de)
+end_m3 = dp if dp else de
 
-# 1. حساب الأشهر لكل مرحلة
-m1 = calculate_months(d1, next1) if d1 else 0
-m2 = calculate_months(d2, next2) if d2 else 0
-m3 = calculate_months(d3, next3) if d3 else 0
-mp = calculate_months(dp, de) if dp else 0
+# 1. حساب عدد الأشهر
+m1 = get_m(d1, end_m1)
+m2 = get_m(d2, end_m2) if d2 else 0
+m3 = get_m(d3, end_m3) if d3 else 0
+mp = get_m(dp, de) if dp else 0
 
-# 2. حساب الفروقات الاسمية (الراتب الجديد - الراتب الأصلي) كما في ملفك
-f1_nom = (sal1 - old_salary) * m1 if sal1 > 0 else 0
-f2_nom = (sal2 - old_salary) * m2 if sal2 > 0 else 0
-f3_nom = (sal3 - old_salary) * m3 if sal3 > 0 else 0
-fp_nom = (sal_p - old_salary) * mp if sal_p > 0 else 0
+# 2. حساب الفروقات الاسمية (مطابق لمعادلة الإكسل: الفرق عن الأساس * الأشهر)
+f1_nom = (sal1 - base_salary) * m1 if sal1 > 0 else 0
+f2_nom = (sal2 - base_salary) * m2 if sal2 > 0 else 0
+f3_nom = (sal3 - base_salary) * m3 if sal3 > 0 else 0
+fp_nom = (sal_p - base_salary) * mp if sal_p > 0 else 0
 
-# 3. حساب الفرق العام (الاسمي × النسبة)
-f1_gen = f1_nom * current_rate
-f2_gen = f2_nom * current_rate
-f3_gen = f3_nom * current_rate
-fp_gen = fp_nom * current_rate
-
-# --- عرض النتائج على شكل جدول منظم ---
+# --- عرض النتائج في جدول ---
 st.divider()
-st.subheader("📋 كشف تفصيلي بالفروقات")
+st.subheader("📊 تفاصيل الحساب")
 
-# إنشاء جدول لعرض النتائج
-data = []
-if d1: data.append(["العلاوة 1", m1, f1_nom, f1_gen])
-if d2: data.append(["العلاوة 2", m2, f2_nom, f2_gen])
-if d3: data.append(["العلاوة 3", m3, f3_nom, f3_gen])
-if dp: data.append(["الترفيع", mp, fp_nom, fp_gen])
+stages = []
+if m1 > 0: stages.append(["العلاوة 1", m1, f1_nom, f1_nom * rate])
+if m2 > 0: stages.append(["العلاوة 2", m2, f2_nom, f2_nom * rate])
+if m3 > 0: stages.append(["العلاوة 3", m3, f3_nom, f3_nom * rate])
+if mp > 0: stages.append(["الترفيع", mp, fp_nom, fp_nom * rate])
 
-if data:
+if stages:
     st.table({
-        "المرحلة": [x[0] for x in data],
-        "عدد الأشهر": [x[1] for x in data],
-        "الفرق الاسمي": [f"{x[2]:,.0f}" for x in data],
-        "الفرق العام (المستحق)": [f"{x[3]:,.1f}" for x in data]
+        "المرحلة": [s[0] for s in stages],
+        "الأشهر": [s[1] for s in stages],
+        "الفرق الاسمي": [f"{s[2]:,.0f}" for s in stages],
+        "الفرق العام (المستحق)": [f"{s[3]:,.1f}" for s in stages]
     })
     
-    total_nom = f1_nom + f2_nom + f3_nom + fp_nom
-    total_gen = f1_gen + f2_gen + f3_gen + fp_gen
-
-    c_nom, c_gen = st.columns(2)
-    with c_nom:
-        st.metric("إجمالي الفرق الاسمي", f"{total_nom:,.0f}")
-    with c_gen:
-        st.success(f"المجموع الكلي للمستحق: {total_gen:,.1f}")
+    total_gen = sum(s[3] for s in stages)
+    st.success(f"المجموع الكلي للفروقات المستحقة: {total_gen:,.1f} دينار")
 else:
-    st.warning("يرجى إدخال 'تاريخ العلاوة 1' على الأقل لبدء الحساب.")
-
-st.caption("يتجاهل النظام تلقائياً أي علاوة لا تحتوي على تاريخ أو راتب كما في الإكسل.")
+    st.warning("الرجاء التأكد من إدخال التواريخ بشكل صحيح.")
