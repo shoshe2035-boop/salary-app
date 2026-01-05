@@ -4,125 +4,85 @@ from datetime import date
 # إعداد الصفحة
 st.set_page_config(page_title="حاسبة الفروقات الوظيفية", layout="wide")
 
+# تصميم الواجهة RTL
 st.markdown("""
 <style>
-.main {direction: rtl; text-align: right;}
+    .main {direction: rtl; text-align: right;}
+    div.stButton > button {width: 100%;}
+    .stNumberInput, .stDateInput, .stSelectbox {direction: rtl;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 حاسبة الفروقات الوظيفية (مطابقة للإكسل)")
+st.title("📊 حاسبة الفروقات الوظيفية (مطابقة لملف 2026)")
 
-# =========================
-# دالة حساب الأشهر (DATEDIF M)
-# =========================
-def calculate_months(start, end):
+# دالة حساب الأشهر (منطق DATEDIF M)
+def get_m(start, end):
     if not start or not end or start >= end:
         return 0
     return (end.year - start.year) * 12 + (end.month - start.month)
 
-# =========================
-# الإدخالات
-# =========================
+# --- المدخلات ---
 c1, c2 = st.columns(2)
 
 with c1:
-    st.subheader("💰 الرواتب")
-    old_salary = st.number_input("الراتب قبل أي علاوة", min_value=0)
-    salary_1 = st.number_input("راتب العلاوة الأولى", min_value=0)
-    salary_2 = st.number_input("راتب العلاوة الثانية", min_value=0)
-    salary_3 = st.number_input("راتب العلاوة الثالثة", min_value=0)
-    salary_promotion = st.number_input("الراتب بعد الترفيع", min_value=0)
-
- لاين
-
-    degree = st.selectbox(
-        "التحصيل العلمي",
-        ["دكتوراه", "ماجستير", "بكالوريوس", "أخرى/أمية"]
-    )
+    st.subheader("💰 الرواتب الاسمية")
+    old_salary = st.number_input("الراتب الاسمي القديم (الأساس)", value=250, step=1)
+    sal1 = st.number_input("راتب العلاوة الأولى", value=260, step=1)
+    sal2 = st.number_input("راتب العلاوة الثانية", value=270, step=1)
+    sal3 = st.number_input("راتب العلاوة الثالثة (اتركه 0 إذا لم يوجد)", value=0, step=1)
+    sal_p = st.number_input("الراتب بعد الترفيع", value=300, step=1)
+    
+    st.markdown("---")
+    degree = st.selectbox("التحصيل العلمي", ["دكتوراه", "ماجستير", "بكالوريوس", "أخرى/أمية"], index=3)
 
 with c2:
     st.subheader("📅 التواريخ")
-    d1 = st.date_input("تاريخ العلاوة الأولى", value=None)
-    d2 = st.date_input("تاريخ العلاوة الثانية", value=None)
+    d1 = st.date_input("تاريخ العلاوة الأولى", value=date(2022, 6, 1))
+    d2 = st.date_input("تاريخ العلاوة الثانية", value=date(2023, 1, 1))
     d3 = st.date_input("تاريخ العلاوة الثالثة", value=None)
-    dp = st.date_input("تاريخ الترفيع", value=None)
-    de = st.date_input("تاريخ نهاية الفترة", value=None)
+    dp = st.date_input("تاريخ الترفيع", value=date(2024, 6, 1))
+    de = st.date_input("تاريخ نهاية الفترة", value=date(2024, 12, 1))
 
-# =========================
-# نسبة الشهادة (مطابقة للإكسل)
-# =========================
-degree_rates = {
-    "دكتوراه": 1.0,
-    "ماجستير": 0.75,
-    "بكالوريوس": 0.50,
-    "أخرى/أمية": 0.0
-}
-rate = degree_rates[degree]
+# --- منطق الحساب المطابق للإكسل ---
 
-# =========================
-# منطق المراحل (مثل Excel)
-# =========================
-stages = []
+# تحديد التاريخ التالي المتاح لكل مرحلة
+next_after_1 = d2 if d2 else (d3 if d3 else (dp if dp else de))
+next_after_2 = d3 if d3 else (dp if dp else de)
+next_after_3 = dp if dp else de
 
-# علاوة 1
-if d1 and d2 and salary_1 > old_salary:
-    months = calculate_months(d1, d2)
-    stages.append({
-        "name": "العلاوة الأولى",
-        "months": months,
-        "nominal": (salary_1 - old_salary) * months
-    })
+# 1. حساب الأشهر
+m1 = get_m(d1, next_after_1)
+m2 = get_m(d2, next_after_2) if d2 else 0
+m3 = get_m(d3, next_after_3) if d3 else 0
+mp = get_m(dp, de) if dp else 0
 
-# علاوة 2
-if d2 and d3 and salary_2 > salary_1:
-    months = calculate_months(d2, d3)
-    stages.append({
-        "name": "العلاوة الثانية",
-        "months": months,
-        "nominal": (salary_2 - salary_1) * months
-    })
+# 2. حساب الفروقات (الراتب الحالي - الراتب القديم الأساسي) كما في الإكسل
+f1 = (sal1 - old_salary) * m1 if sal1 > 0 else 0
+f2 = (sal2 - old_salary) * m2 if sal2 > 0 else 0
+f3 = (sal3 - old_salary) * m3 if sal3 > 0 else 0
+fp = (sal_p - old_salary) * mp if sal_p > 0 else 0
 
-# علاوة 3
-if d3 and dp and salary_3 > salary_2:
-    months = calculate_months(d3, dp)
-    stages.append({
-        "name": "العلاوة الثالثة",
-        "months": months,
-        "nominal": (salary_3 - salary_2) * months
-    })
+total_nominal = f1 + f2 + f3 + fp
 
-# الترفيع
-if dp and de and salary_promotion > salary_3:
-    months = calculate_months(dp, de)
-    stages.append({
-        "name": "الترفيع",
-        "months": months,
-        "nominal": (salary_promotion - salary_3) * months
-    })
+# 3. نسبة الشهادة
+rates = {"دكتوراه": 1.0, "ماجستير": 0.75, "بكالوريوس": 0.50, "أخرى/أمية": 0.15}
+current_rate = rates[degree]
 
-# =========================
-# عرض النتائج
-# =========================
+final_total = total_nominal * current_rate
+
+# --- عرض النتائج ---
 st.divider()
-st.header("📋 تفاصيل الفروقات")
+res1, res2 = st.columns(2)
 
-total_nominal = 0
-total_general = 0
+with res1:
+    st.info(f"التحصيل: {degree} ({int(current_rate*100)}%)")
+    st.write(f"أشهر العلاوة 1: **{m1}** | الفرق: **{f1:,.1f}**")
+    st.write(f"أشهر العلاوة 2: **{m2}** | الفرق: **{f2:,.1f}**")
+    st.write(f"أشهر العلاوة 3: **{m3}** | الفرق: **{f3:,.1f}**")
+    st.write(f"أشهر الترفيع: **{mp}** | الفرق: **{fp:,.1f}**")
 
-if not stages:
-    st.warning("لم يتم إدخال بيانات كافية لأي علاوة أو ترفيع")
-else:
-    for s in stages:
-        general = s["nominal"] * rate
-        total_nominal += s["nominal"]
-        total_general += general
+with res2:
+    st.metric("إجمالي الفرق الاسمي", f"{total_nominal:,.1f}")
+    st.success(f"المجموع الكلي للمستحق: {final_total:,.1f}")
 
-        st.subheader(s["name"])
-        st.write("عدد الأشهر:", s["months"])
-        st.write("الفرق الاسمي:", f"{s['nominal']:,.0f}")
-        st.write("الفرق العام:", f"{general:,.0f}")
-        st.divider()
-
-    st.success("✅ النتيجة النهائية")
-    st.write("إجمالي الفرق الاسمي:", f"{total_nominal:,.0f}")
-    st.write("إجمالي الفرق العام (المستحق):", f"{total_general:,.0f}")
+st.caption("ملاحظة: تم ضبط الحساب ليطابق منطق ملف الإكسل المرفق (الفرق يحسب من الراتب الأساسي القديم).")
