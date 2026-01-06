@@ -4,7 +4,7 @@ from datetime import date
 # ---------------------------------------------------------
 # إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="حاسبة الفروقات V10 (المنطق المختلط)", layout="wide")
+st.set_page_config(page_title="حاسبة الفروقات V10.1", layout="wide")
 
 st.markdown("""
 <style>
@@ -17,11 +17,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚖️ حاسبة الفروقات (المنطق المختلط V10)")
+st.title("⚖️ حاسبة الفروقات (الكود المصحح)")
 st.info("""
 القواعد المطبقة:
-1. **العلاوات:** عند تغير السنة يتم **مضاعفة الفرق** (×2).
-2. **الترفيع:** عند تغير السنة يتم **العودة للراتب الأساسي** (Old Nominal).
+1. **العلاوات:** سنة جديدة ← مضاعفة الفرق (×2). نفس السنة ← الفرق الطبيعي.
+2. **الترفيع:** سنة جديدة ← العودة للأساس. نفس السنة ← الفرق عن السابق.
 """)
 
 # ---------------------------------------------------------
@@ -35,19 +35,13 @@ def get_months(start, end):
     return (end.year - start.year) * 12 + (end.month - start.month)
 
 def calculate_allowance_logic(current_sal, current_date, prev_sal, prev_date):
-    """
-    منطق العلاوات:
-    - سنة جديدة -> (الحالي - السابق) * 2
-    - نفس السنة -> (الحالي - السابق)
-    """
+    """منطق العلاوات: سنة جديدة تضاعف الفرق"""
     if not current_sal or current_sal == 0 or not current_date:
         return 0, 0, "لا يوجد"
     
-    # التأكد من الراتب السابق (إذا لا يوجد نعتبره 0 لتجنب الخطأ، ولكن منطقياً يجب أن يمرر)
     ref_sal = prev_sal if prev_sal else 0
     step_diff = current_sal - ref_sal
 
-    # إذا لم يوجد تاريخ سابق (أول علاوة)، نعتبرها فرق عادي
     if not prev_date:
         return step_diff, step_diff, "بداية (فرق عادي)"
 
@@ -58,24 +52,18 @@ def calculate_allowance_logic(current_sal, current_date, prev_sal, prev_date):
         return step_diff, step_diff, "نفس السنة (فرق عادي)"
 
 def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, base_sal):
-    """
-    منطق الترفيع:
-    - سنة جديدة -> (الحالي - الأساس)
-    - نفس السنة -> (الحالي - السابق)
-    """
+    """منطق الترفيع: سنة جديدة تعود للأساس"""
     if not current_sal or current_sal == 0 or not current_date:
         return 0, 0, "لا يوجد"
     
-    if not prev_date: # حالة نادرة (ترفيع مباشر)
+    if not prev_date: 
         diff = current_sal - base_sal
         return diff, diff, "عن الأساس (بداية)"
 
     if current_date.year > prev_date.year:
-        # سنة جديدة -> العودة للأساس
         diff = current_sal - base_sal
         return (current_sal - prev_sal), diff, "سنة جديدة (عودة للأساس)"
     else:
-        # نفس السنة -> الفرق عن السابق
         ref_sal = prev_sal if prev_sal else base_sal
         diff = current_sal - ref_sal
         return diff, diff, "نفس السنة (عن السابق)"
@@ -120,33 +108,29 @@ with col2:
 # 2️⃣ المعالجة
 # ---------------------------------------------------------
 
-# تحديد التواريخ النهائية
 end1 = d2 if d2 else (d3 if d3 else (dp if dp else de))
 end2 = d3 if d3 else (dp if dp else de)
 end3 = dp if dp else de
 
-# حساب الأشهر
 m1 = get_months(d1, end1)
 m2 = get_months(d2, end2) if d2 else 0
 m3 = get_months(d3, end3) if d3 else 0
 mp = get_months(dp, de) if dp else 0
 
-# === حساب الفروقات (تطبيق المنطق المختلط) ===
+# === حساب الفروقات ===
 
-# -- 1. العلاوة الأولى (دائماً تقارن بالأساس وتعتبر فرق عادي) --
-# ملاحظة: العلاوة الأولى تعتبر step من الأساس
+# 1. العلاوة الأولى
 diff1_raw, diff1_final, note1 = calculate_allowance_logic(s1, d1, base_sal, None) 
-# تعديل بسيط: العلاوة الأولى عادة لا تضاعف لأنها لا تملك تاريخ سابق للمقارنة، أو تعتمد على تاريخ التعيين
-# هنا سنعتبرها فرق عادي (Step)
+# تعديل: العلاوة الأولى غالباً تحسب كفرق عن الأساس بدون مضاعفة في البداية
 nom1 = diff1_final * m1
 
-# -- 2. العلاوة الثانية (منطق العلاوات: مضاعفة) --
+# 2. العلاوة الثانية
 prev_s_2 = s1 if s1 > 0 else base_sal
 prev_d_2 = d1 if s1 > 0 else None
 diff2_raw, diff2_final, note2 = calculate_allowance_logic(s2, d2, prev_s_2, prev_d_2)
 nom2 = diff2_final * m2
 
-# -- 3. العلاوة الثالثة (منطق العلاوات: مضاعفة) --
+# 3. العلاوة الثالثة
 if s2 > 0 and d2:
     prev_s_3, prev_d_3 = s2, d2
 elif s1 > 0 and d1:
@@ -157,7 +141,7 @@ else:
 diff3_raw, diff3_final, note3 = calculate_allowance_logic(s3, d3, prev_s_3, prev_d_3)
 nom3 = diff3_final * m3
 
-# -- 4. الترفيع (منطق الترفيع: عودة للأساس) --
+# 4. الترفيع
 if s3 > 0 and d3:
     prev_s_p, prev_d_p = s3, d3
 elif s2 > 0 and d2:
@@ -189,8 +173,9 @@ if m3 > 0: rows.append(["العلاوة 3", m3, f"{diff3_raw} ➞ {diff3_final}"
 if mp > 0: rows.append(["الترفيع", mp, f"{diff_p_raw} ➞ {diff_p_final}", f"{nom_p:,.0f}", f"{gen_p:,.1f}", note_p])
 
 if rows:
+    # التصحيح هنا: تمت إضافة (:) والقيمة المفقودة r[2]
     st.table([
-        {"المرحلة": r[0], "الأشهر": r[1], "الفرق (المعتمد)", "الاسمي": r[3], "المستحق": r[4], "ملاحظة": r[5]}
+        {"المرحلة": r[0], "الأشهر": r[1], "الفرق (المعتمد)": r[2], "الاسمي": r[3], "المستحق": r[4], "ملاحظة": r[5]}
         for r in rows
     ])
 
