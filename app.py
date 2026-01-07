@@ -1,6 +1,12 @@
 import streamlit as st
-import pandas as pd
 from datetime import date
+
+# محاولة استدعاء مكتبة باندا بأمان
+try:
+    import pandas as pd
+except ImportError:
+    st.error("جاري تهيئة النظام... يرجى إعادة تشغيل التطبيق (Reboot) من لوحة التحكم.")
+    st.stop()
 
 # ---------------------------------------------------------
 # إعدادات الصفحة والتنسيق الجمالي
@@ -41,9 +47,6 @@ st.markdown("""
 
 st.markdown('<div class="center-title">حاسبة الفروقات الوظيفية</div>', unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# الشريط الجانبي
-# ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### 👤 بيانات المطور")
     st.write("**مصطفى حسن صكبان**")
@@ -53,9 +56,7 @@ with st.sidebar:
     st.divider()
     st.caption("جميع الحقوق محفوظة © 2026")
 
-# ---------------------------------------------------------
 # الدوال الحسابية
-# ---------------------------------------------------------
 def get_months(start, end):
     if not start or not end or start >= end: return 0
     return (end.year - start.year) * 12 + (end.month - start.month)
@@ -75,9 +76,7 @@ def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, ba
         return (current_sal - (prev_sal if prev_sal else base_sal)), (current_sal - base_sal), "سنة جديدة (أساس)"
     return (current_sal - (prev_sal if prev_sal else base_sal)), (current_sal - (prev_sal if prev_sal else base_sal)), "نفس السنة"
 
-# ---------------------------------------------------------
 # الإدخالات
-# ---------------------------------------------------------
 c1, c2 = st.columns(2)
 with c1:
     st.info("💰 المبالغ والرواتب")
@@ -100,12 +99,12 @@ with c2:
     dp = st.date_input("تاريخ الترفيع", value=None)
     de = st.date_input("تاريخ نهاية الاحتساب", value=date.today())
 
-# ---------------------------------------------------------
-# الحسابات والعرض
-# ---------------------------------------------------------
+# الحسابات
 rows = []
 total_nom = 0
-end1, end2, end3 = (d2 or d3 or dp or de), (d3 or dp or de), (dp or de)
+end1 = (d2 or d3 or dp or de)
+end2 = (d3 or dp or de)
+end3 = (dp or de)
 
 if s1 > 0 and d1:
     dr, df, note = calculate_allowance_logic(s1, d1, base_sal, None)
