@@ -1,12 +1,13 @@
 import streamlit as st
+import pandas as pd
 from datetime import date
+import io
 
 # ---------------------------------------------------------
 # إعدادات الصفحة والتنسيق الجمالي
 # ---------------------------------------------------------
 st.set_page_config(page_title="حاسبة الفروقات - مصطفى حسن", layout="wide")
 
-# CSS متقدم لتحسين المظهر ودعم اللغة العربية
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -17,16 +18,20 @@ st.markdown("""
         text-align: right;
     }
 
-    /* تنسيق الحاويات والبطاقات */
-    .stNumberInput, .stDateInput, .stSelectbox {
-        transition: 0.3s;
+    /* توسيط العنوان الرئيسي */
+    .main-title {
+        text-align: center;
+        color: #1E3A8A;
+        font-size: 40px;
+        font-weight: bold;
+        margin-bottom: 30px;
+        padding: 20px;
+        border-bottom: 2px solid #1E3A8A;
     }
-    
-    /* تنسيق الجداول */
+
     [data-testid="stTable"] {
         background-color: #ffffff;
         border-radius: 10px;
-        overflow: hidden;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     
@@ -36,7 +41,6 @@ st.markdown("""
         text-align: right !important;
     }
 
-    /* المذيل الجمالي */
     .footer {
         position: fixed;
         left: 0;
@@ -50,39 +54,27 @@ st.markdown("""
         border-top: 3px solid #1e3a8a;
         z-index: 100;
     }
-    
-    /* أيقونة الجانب */
-    .sidebar-info {
-        background-color: #e0e7ff;
-        padding: 15px;
-        border-radius: 10px;
-        border-right: 5px solid #1e3a8a;
-    }
 </style>
 """, unsafe_allow_html=True)
 
+# العنوان في منتصف الصفحة
+st.markdown('<div class="main-title">حاسبة الفروقات الوظيفية</div>', unsafe_allow_html=True)
+
 # ---------------------------------------------------------
-# الشريط الجانبي - الهوية البصرية
+# الشريط الجانبي - الهوية الشخصية
 # ---------------------------------------------------------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2830/2830284.png", width=100)
-    st.markdown("<div class='sidebar-info'>", unsafe_allow_html=True)
-    st.markdown("### 👤 المطور المسؤول")
-    st.write("**أستاذ: مصطفى حسن صكبان**")
+    st.markdown("### 👤 بيانات المطور")
+    st.write("**مصطفى حسن صكبان**")
     st.write("📍 محافظة الديوانية")
     st.write("🏢 شعبة حسابات الثانوي")
     st.write("📞 07702360003")
-    st.markdown("</div>", unsafe_allow_html=True)
     st.divider()
-    st.caption("حقوق النشر محفوظة © 2026")
+    st.caption("جميع الحقوق محفوظة © 2026")
 
 # ---------------------------------------------------------
-# واجهة التطبيق الرئيسية
+# دوال الحساب
 # ---------------------------------------------------------
-st.title("⚖️ حاسبة الفروقات الوظيفية الذكية")
-st.markdown("---")
-
-# دوال الحساب المعتمدة سابقاً
 def get_months(start, end):
     if not start or not end or start >= end: return 0
     return (end.year - start.year) * 12 + (end.month - start.month)
@@ -92,8 +84,7 @@ def calculate_allowance_logic(current_sal, current_date, prev_sal, prev_date):
     ref_sal = prev_sal if prev_sal else 0
     step_diff = current_sal - ref_sal
     if not prev_date: return step_diff, step_diff, "بداية"
-    if current_date.year > prev_date.year:
-        return step_diff, step_diff * 2, "سنة جديدة (×2)"
+    if current_date.year > prev_date.year: return step_diff, step_diff * 2, "سنة جديدة (×2)"
     return step_diff, step_diff, "نفس السنة"
 
 def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, base_sal):
@@ -103,25 +94,24 @@ def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, ba
         return (current_sal - (prev_sal if prev_sal else base_sal)), (current_sal - base_sal), "سنة جديدة (أساس)"
     return (current_sal - (prev_sal if prev_sal else base_sal)), (current_sal - (prev_sal if prev_sal else base_sal)), "نفس السنة"
 
-# 1️⃣ الإدخالات بتنسيق أعمدة
+# 1️⃣ الإدخالات
 c1, c2 = st.columns(2)
 
 with c1:
     st.info("💰 المبالغ والرواتب")
-    base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0, min_value=0)
-    s1 = st.number_input("الراتب بعد العلاوة 1", value=0, min_value=0)
-    s2 = st.number_input("الراتب بعد العلاوة 2", value=0, min_value=0)
-    s3 = st.number_input("الراتب بعد العلاوة 3", value=0, min_value=0)
-    sp = st.number_input("الراتب بعد الترفيع", value=0, min_value=0)
+    name = st.text_input("اسم الموظف (اختياري للطباعة)", "")
+    base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0)
+    s1 = st.number_input("الراتب بعد العلاوة 1", value=0)
+    s2 = st.number_input("الراتب بعد العلاوة 2", value=0)
+    s3 = st.number_input("الراتب بعد العلاوة 3", value=0)
+    sp = st.number_input("الراتب بعد الترفيع", value=0)
     
-    st.divider()
-    degree = st.selectbox("🎓 التحصيل العلمي (النسبة)", 
-                          ["دكتوراه", "ماجستير", "دبلوم", "بكالوريوس", "اعدادية", "متوسطة", "ابتدائية", "أمية"], index=3)
+    degree = st.selectbox("🎓 التحصيل العلمي", ["دكتوراه", "ماجستير", "دبلوم", "بكالوريوس", "اعدادية", "متوسطة", "ابتدائية", "أمية"], index=3)
     rates = {"دكتوراه": 1.0, "ماجستير": 0.75, "دبلوم": 0.55, "بكالوريوس": 0.45, "اعدادية": 0.25, "متوسطة": 0.15, "ابتدائية": 0.15, "أمية": 0.15}
     rate = rates.get(degree, 0)
 
 with c2:
-    st.info("📅 جدول التواريخ")
+    st.info("📅 التواريخ")
     d1 = st.date_input("تاريخ العلاوة 1", value=None)
     d2 = st.date_input("تاريخ العلاوة 2", value=None)
     d3 = st.date_input("تاريخ العلاوة 3", value=None)
@@ -129,66 +119,54 @@ with c2:
     de = st.date_input("تاريخ نهاية الاحتساب", value=date.today())
 
 # 2️⃣ المعالجة
-end1 = d2 or d3 or dp or de
-end2 = d3 or dp or de
-end3 = dp or de
-endp = de
-
 rows = []
 total_nom = 0
+end1, end2, end3 = (d2 or d3 or dp or de), (d3 or dp or de), (dp or de)
 
-# (تطبيق المنطق الحسابي لجميع المراحل كما في V13)
-# العلاوة 1
 if s1 > 0 and d1:
     dr, df, note = calculate_allowance_logic(s1, d1, base_sal, None)
     m = get_months(d1, end1)
     if m > 0:
-        total_nom += (df * m)
-        rows.append({"المرحلة": "علاوة 1", "أشهر": m, "الفرق": df, "الاسمي": f"{df*m:,.0f}", "ملاحظة": note})
+        total_nom += (df * m); rows.append({"المرحلة": "علاوة 1", "أشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
 
-# العلاوة 2
 if s2 > 0 and d2:
     dr, df, note = calculate_allowance_logic(s2, d2, s1 or base_sal, d1 if s1 > 0 else None)
     m = get_months(d2, end2)
     if m > 0:
-        total_nom += (df * m)
-        rows.append({"المرحلة": "علاوة 2", "أشهر": m, "الفرق": df, "الاسمي": f"{df*m:,.0f}", "ملاحظة": note})
+        total_nom += (df * m); rows.append({"المرحلة": "علاوة 2", "أشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
 
-# العلاوة 3
 if s3 > 0 and d3:
     ps, pd = (s2, d2) if s2 > 0 else ((s1, d1) if s1 > 0 else (base_sal, None))
     dr, df, note = calculate_allowance_logic(s3, d3, ps, pd)
     m = get_months(d3, end3)
     if m > 0:
-        total_nom += (df * m)
-        rows.append({"المرحلة": "علاوة 3", "أشهر": m, "الفرق": df, "الاسمي": f"{df*m:,.0f}", "ملاحظة": note})
+        total_nom += (df * m); rows.append({"المرحلة": "علاوة 3", "أشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
 
-# الترفيع
 if sp > 0 and dp:
     ps, pd = (s3, d3) if s3 > 0 else ((s2, d2) if s2 > 0 else ((s1, d1) if s1 > 0 else (base_sal, None)))
     dr, df, note = calculate_promotion_logic(sp, dp, ps, pd, base_sal)
-    m = get_months(dp, endp)
+    m = get_months(dp, de)
     if m > 0:
-        total_nom += (df * m)
-        rows.append({"المرحلة": "الترفيع", "أشهر": m, "الفرق": df, "الاسمي": f"{df*m:,.0f}", "ملاحظة": note})
+        total_nom += (df * m); rows.append({"المرحلة": "الترفيع", "أشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
 
-# 3️⃣ النتائج
-st.markdown("### 📊 كشف النتائج")
+# 3️⃣ النتائج والطباعة
 if rows:
-    st.table(rows)
+    st.markdown("### 📊 كشف المستحقات")
+    df_display = pd.DataFrame(rows)
+    st.table(df_display)
     
     total_gen = total_nom * rate
-    res_c1, res_c2 = st.columns(2)
-    with res_c1:
-        st.metric("إجمالي الفرق الاسمي", f"{total_nom:,.0f} د.ع")
-    with res_c2:
-        st.metric("المستحق النهائي (العام)", f"{total_gen:,.1f} د.ع", delta=f"{int(rate*100)}% نسبة الشهادة")
-else:
-    st.warning("الرجاء إدخال البيانات للبدء في الحساب.")
+    st.success(f"المستحق النهائي للموظف ({name}): {total_gen:,.1f} د.ع")
 
-# المذيل
-st.markdown(f"""
-<div class="footer">
-    مصطفى حسن صكبان - شعبة حسابات الثانوي - محافظة الديوانية - 2026 ©
-</div>
-""", unsafe_allow_html=True)
+    # زر التحميل لملف الإكسل (CSV) جاهز للطباعة
+    csv = df_display.to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 تحميل الملف للطباعة (Excel)",
+        data=csv,
+        file_name=f"فروقات_{name or 'موظف'}.csv",
+        mime='text/csv',
+    )
+else:
+    st.warning("أدخل البيانات لعرض النتائج.")
+
+st.markdown(f'<div class="footer">مصطفى حسن صكبان - شعبة حسابات الثانوي - محافظة الديوانية - {date.today().year} ©</div>', unsafe_allow_html=True)
