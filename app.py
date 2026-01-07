@@ -4,7 +4,28 @@ from datetime import date
 # ---------------------------------------------------------
 # إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="حاسبة الفروقات الشاملة", layout="wide")
+st.set_page_config(page_title="حاسبة الفروقات - مصطفى حسن", layout="wide")
+
+# إضافة حقوق الملكية في الشريط الجانبي (Sidebar)
+with st.sidebar:
+    st.markdown("### 🛡️ حقوق الملكية والبرمجة")
+    st.markdown("""
+    **إعداد وتطوير:**
+    **مصطفى حسن صكبان**
+    
+    **العنوان:**
+    العراق - محافظة الديوانية
+    قسم الشؤون المالية - شعبة حسابات الثانوي
+    
+    **للتواصل:**
+    [07702360003](tel:07702360003)
+    
+    **الإصدار:** 1.0.1
+    ---
+    **ملاحظة:** جميع الحقوق محفوظة © 2026
+    """)
+    st.divider()
+    st.info("نظام حسابي متطور لمعالجة فروقات الترفيع والعلاوات.")
 
 st.markdown("""
 <style>
@@ -13,11 +34,24 @@ st.markdown("""
     .stTable {direction: rtl; text-align: right;}
     input, select {direction: rtl;}
     th, td {text-align: right !important;}
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #f0f2f6;
+        color: #333;
+        text-align: center;
+        padding: 5px;
+        font-size: 11px;
+        border-top: 1px solid #e6e9ef;
+        z-index: 100;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚖️ حاسبة الفروقات (النسخة المرنة V12)")
-st.info("يمكنك الآن حساب الترفيع وحده، أو العلاوات وحدها، أو الجميع معاً.")
+st.title("⚖️ حاسبة الفروقات الوظيفية")
+st.caption("تطوير: مصطفى حسن صكبان - قسم الشؤون المالية")
 
 # ---------------------------------------------------------
 # 🔧 دوال الحساب
@@ -43,7 +77,6 @@ def calculate_allowance_logic(current_sal, current_date, prev_sal, prev_date):
 def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, base_sal):
     if not current_sal or current_sal == 0 or not current_date:
         return 0, 0, ""
-    # إذا كانت سنة الترفيع أكبر من سنة آخر إجراء (أو سنة الترفيع نفسها إذا لم يوجد سابق)
     check_year = prev_date.year if prev_date else current_date.year
     if current_date.year > check_year:
         diff = current_sal - base_sal
@@ -83,10 +116,8 @@ with col2:
     de = st.date_input("تاريخ نهاية الفترة", value=date.today())
 
 # ---------------------------------------------------------
-# 2️⃣ المعالجة المنطقية (بدون شروط منع)
+# 2️⃣ المعالجة المنطقية
 # ---------------------------------------------------------
-
-# تحديد التواريخ المتعاقبة
 end1 = d2 if d2 else (d3 if d3 else (dp if dp else de))
 end2 = d3 if d3 else (dp if dp else de)
 end3 = dp if dp else de
@@ -95,7 +126,6 @@ endp = de
 rows = []
 total_nom = 0
 
-# حساب العلاوة 1
 if s1 > 0 and d1:
     d_raw, d_final, note = calculate_allowance_logic(s1, d1, base_sal, None)
     m = get_months(d1, end1)
@@ -104,10 +134,8 @@ if s1 > 0 and d1:
         total_nom += nom
         rows.append(["علاوة 1", m, d_final, f"{nom:,.0f}", note])
 
-# حساب العلاوة 2
 if s2 > 0 and d2:
-    prev_s = s1 if s1 > 0 else base_sal
-    prev_d = d1 if s1 > 0 else None
+    prev_s, prev_d = s1 if s1 > 0 else base_sal, d1 if s1 > 0 else None
     d_raw, d_final, note = calculate_allowance_logic(s2, d2, prev_s, prev_d)
     m = get_months(d2, end2)
     if m > 0:
@@ -115,7 +143,6 @@ if s2 > 0 and d2:
         total_nom += nom
         rows.append(["علاوة 2", m, d_final, f"{nom:,.0f}", note])
 
-# حساب العلاوة 3
 if s3 > 0 and d3:
     prev_s = s2 if s2 > 0 else (s1 if s1 > 0 else base_sal)
     prev_d = d2 if s2 > 0 else (d1 if d1 else None)
@@ -126,31 +153,14 @@ if s3 > 0 and d3:
         total_nom += nom
         rows.append(["علاوة 3", m, d_final, f"{nom:,.0f}", note])
 
-# حساب الترفيع (يعمل الآن حتى لو العلاوات فارغة)
 if sp > 0 and dp:
-    # البحث عن آخر راتب وتاريخ قبل الترفيع
     if s3 > 0: prev_s, prev_d = s3, d3
     elif s2 > 0: prev_s, prev_d = s2, d2
     elif s1 > 0: prev_s, prev_d = s1, d1
     else: prev_s, prev_d = base_sal, None
-    
     d_raw, d_final, note = calculate_promotion_logic(sp, dp, prev_s, prev_d, base_sal)
     m = get_months(dp, endp)
     if m > 0:
         nom = d_final * m
         total_nom += nom
-        rows.append(["الترفيع", m, d_final, f"{nom:,.0f}", note])
-
-# ---------------------------------------------------------
-# 3️⃣ النتائج
-# ---------------------------------------------------------
-if rows:
-    st.divider()
-    st.table([{"المرحلة": r[0], "أشهر": r[1], "الفرق الشهري": r[2], "الاسمي الكلي": r[3], "ملاحظة": r[4]} for r in rows])
-    
-    total_gen = total_nom * rate
-    c1, c2 = st.columns(2)
-    c1.metric("إجمالي الفرق الاسمي", f"{total_nom:,.0f}")
-    c2.success(f"المستحق النهائي ({int(rate*100)}%): {total_gen:,.1f}")
-else:
-    st.warning("يرجى إدخال بيانات (راتب وتاريخ) لأي مرحلة لعرض النتائج.")
+        rows.append(["الترف
