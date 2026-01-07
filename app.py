@@ -1,13 +1,6 @@
 import streamlit as st
 from datetime import date
 
-# محاولة استدعاء مكتبة باندا بأمان
-try:
-    import pandas as pd
-except ImportError:
-    st.error("جاري تهيئة النظام... يرجى إعادة تشغيل التطبيق (Reboot) من لوحة التحكم.")
-    st.stop()
-
 # ---------------------------------------------------------
 # إعدادات الصفحة والتنسيق الجمالي
 # ---------------------------------------------------------
@@ -109,35 +102,56 @@ end3 = (dp or de)
 if s1 > 0 and d1:
     dr, df, note = calculate_allowance_logic(s1, d1, base_sal, None)
     m = get_months(d1, end1)
-    if m > 0: total_nom += (df * m); rows.append({"المرحلة": "علاوة 1", "الأشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
+    if m > 0: 
+        val = df * m
+        total_nom += val
+        rows.append({"المرحلة": "علاوة 1", "الأشهر": m, "الفرق": df, "الاسمي": val, "ملاحظة": note})
 
 if s2 > 0 and d2:
     dr, df, note = calculate_allowance_logic(s2, d2, s1 or base_sal, d1 if s1 > 0 else None)
     m = get_months(d2, end2)
-    if m > 0: total_nom += (df * m); rows.append({"المرحلة": "علاوة 2", "الأشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
+    if m > 0: 
+        val = df * m
+        total_nom += val
+        rows.append({"المرحلة": "علاوة 2", "الأشهر": m, "الفرق": df, "الاسمي": val, "ملاحظة": note})
 
 if s3 > 0 and d3:
     ps, pd = (s2, d2) if s2 > 0 else ((s1, d1) if s1 > 0 else (base_sal, None))
     dr, df, note = calculate_allowance_logic(s3, d3, ps, pd)
     m = get_months(d3, end3)
-    if m > 0: total_nom += (df * m); rows.append({"المرحلة": "علاوة 3", "الأشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
+    if m > 0: 
+        val = df * m
+        total_nom += val
+        rows.append({"المرحلة": "علاوة 3", "الأشهر": m, "الفرق": df, "الاسمي": val, "ملاحظة": note})
 
 if sp > 0 and dp:
     ps, pd = (s3, d3) if s3 > 0 else ((s2, d2) if s2 > 0 else ((s1, d1) if s1 > 0 else (base_sal, None)))
     dr, df, note = calculate_promotion_logic(sp, dp, ps, pd, base_sal)
     m = get_months(dp, de)
-    if m > 0: total_nom += (df * m); rows.append({"المرحلة": "الترفيع", "الأشهر": m, "الفرق": df, "الاسمي": df*m, "ملاحظة": note})
+    if m > 0: 
+        val = df * m
+        total_nom += val
+        rows.append({"المرحلة": "الترفيع", "الأشهر": m, "الفرق": df, "الاسمي": val, "ملاحظة": note})
 
 if rows:
     st.markdown("### 📊 كشف المستحقات")
-    final_df = pd.DataFrame(rows)
-    st.table(final_df)
+    # عرض الجدول باستخدام دالة سيتريمليت المباشرة لتجنب Pandas
+    st.table(rows)
     
     total_gen = total_nom * rate
     st.success(f"المستحق النهائي للموظف ({emp_name}): {total_gen:,.1f} د.ع")
 
-    csv = final_df.to_csv(index=False).encode('utf-8-sig')
-    st.download_button("📥 تحميل الملف للطباعة (Excel)", data=csv, file_name=f"فروقات_{emp_name}.csv", mime='text/csv')
+    # إنشاء ملف CSV يدوياً (نصي) لتجنب Pandas تماماً
+    csv_content = "المرحلة,الأشهر,الفرق,الاسمي,ملاحظة\n"
+    for r in rows:
+        csv_content += f"{r['المرحلة']},{r['الأشهر']},{r['الفرق']},{r['الاسمي']},{r['ملاحظة']}\n"
+    
+    st.download_button(
+        label="📥 تحميل الملف للطباعة (Excel)", 
+        data=csv_content.encode('utf-8-sig'), 
+        file_name=f"فروقات_{emp_name}.csv", 
+        mime='text/csv'
+    )
 else:
     st.warning("أدخل البيانات لعرض النتائج.")
 
