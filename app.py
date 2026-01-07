@@ -20,12 +20,12 @@ with st.sidebar:
     **للتواصل:**
     [07702360003](tel:07702360003)
     
-    **الإصدار:** 1.0.1
+    **الإصدار:** 1.0.2
     ---
     **ملاحظة:** جميع الحقوق محفوظة © 2026
     """)
     st.divider()
-    st.info("نظام حسابي متطور لمعالجة فروقات الترفيع والعلاوات.")
+    st.info("نظام حسابي متطور لمعالجة فروقات الترفيع والعلاوات بدقة.")
 
 st.markdown("""
 <style>
@@ -50,7 +50,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚖️ حاسبة الفروقات الوظيفية")
+st.title("⚖️ حاسبة الفروقات الوظيفية المعتمدة")
 st.caption("تطوير: مصطفى حسن صكبان - قسم الشؤون المالية")
 
 # ---------------------------------------------------------
@@ -135,7 +135,7 @@ if s1 > 0 and d1:
         rows.append(["علاوة 1", m, d_final, f"{nom:,.0f}", note])
 
 if s2 > 0 and d2:
-    prev_s, prev_d = s1 if s1 > 0 else base_sal, d1 if s1 > 0 else None
+    prev_s, prev_d = (s1, d1) if s1 > 0 else (base_sal, None)
     d_raw, d_final, note = calculate_allowance_logic(s2, d2, prev_s, prev_d)
     m = get_months(d2, end2)
     if m > 0:
@@ -145,7 +145,7 @@ if s2 > 0 and d2:
 
 if s3 > 0 and d3:
     prev_s = s2 if s2 > 0 else (s1 if s1 > 0 else base_sal)
-    prev_d = d2 if s2 > 0 else (d1 if d1 else None)
+    prev_d = d2 if s2 > 0 else (d1 if d1 > 0 else None)
     d_raw, d_final, note = calculate_allowance_logic(s3, d3, prev_s, prev_d)
     m = get_months(d3, end3)
     if m > 0:
@@ -163,4 +163,24 @@ if sp > 0 and dp:
     if m > 0:
         nom = d_final * m
         total_nom += nom
-        rows.append(["الترف
+        rows.append(["الترفيع", m, d_final, f"{nom:,.0f}", note])
+
+# ---------------------------------------------------------
+# 3️⃣ النتائج
+# ---------------------------------------------------------
+if rows:
+    st.divider()
+    st.table([{"المرحلة": r[0], "أشهر": r[1], "الفرق الشهري": r[2], "الاسمي الكلي": r[3], "ملاحظة": r[4]} for r in rows])
+    total_gen = total_nom * rate
+    c1, c2 = st.columns(2)
+    c1.metric("إجمالي الفرق الاسمي", f"{total_nom:,.0f}")
+    c2.success(f"المستحق النهائي ({int(rate*100)}%): {total_gen:,.1f}")
+else:
+    st.warning("الرجاء إدخال بيانات (راتب وتاريخ) لأي مرحلة لعرض النتائج.")
+
+# Footer
+st.markdown(f"""
+<div class="footer">
+    تصميم وبرمجة: مصطفى حسن صكبان - شعبة حسابات الثانوي - محافظة الديوانية | هاتف: 07702360003 © {date.today().year}
+</div>
+""", unsafe_allow_html=True)
