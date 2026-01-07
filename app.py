@@ -35,6 +35,7 @@ st.markdown("""
         z-index: 100;
     }
     th { background-color: #1E3A8A !important; color: white !important; text-align: right !important; }
+    div[data-testid="stMetricValue"] { font-size: 28px; color: #1E3A8A; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -135,16 +136,25 @@ if sp > 0 and dp:
 
 if rows:
     st.markdown("### 📊 كشف المستحقات")
-    # عرض الجدول باستخدام دالة سيتريمليت المباشرة لتجنب Pandas
     st.table(rows)
     
+    # حساب المبالغ النهائية
     total_gen = total_nom * rate
-    st.success(f"المستحق النهائي للموظف ({emp_name}): {total_gen:,.1f} د.ع")
+    
+    # عرض المجاميع بشكل جمالي وواضح
+    res_col1, res_col2 = st.columns(2)
+    with res_col1:
+        st.metric("مجموع الفرق الاسمي الكلي", f"{total_nom:,.0f} د.ع")
+    with res_col2:
+        st.success(f"المستحق النهائي للموظف ({emp_name})")
+        st.metric("المبلغ الصافي (العام)", f"{total_gen:,.1f} د.ع")
 
-    # إنشاء ملف CSV يدوياً (نصي) لتجنب Pandas تماماً
+    # تحميل الملف
     csv_content = "المرحلة,الأشهر,الفرق,الاسمي,ملاحظة\n"
     for r in rows:
         csv_content += f"{r['المرحلة']},{r['الأشهر']},{r['الفرق']},{r['الاسمي']},{r['ملاحظة']}\n"
+    csv_content += f"\nمجموع الفرق الاسمي,,,{total_nom},\n"
+    csv_content += f"المستحق النهائي العام,,,{total_gen},"
     
     st.download_button(
         label="📥 تحميل الملف للطباعة (Excel)", 
