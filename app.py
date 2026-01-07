@@ -1,7 +1,6 @@
 import streamlit as st
-import pandas as pd
+import pandas as pd  # المكتبة المسؤولة عن الجداول والطباعة
 from datetime import date
-import io
 
 # ---------------------------------------------------------
 # إعدادات الصفحة والتنسيق الجمالي
@@ -11,36 +10,21 @@ st.set_page_config(page_title="حاسبة الفروقات - مصطفى حسن",
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-
     html, body, [data-testid="stSidebar"], .main {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
     }
-
     /* توسيط العنوان الرئيسي */
-    .main-title {
+    .center-title {
         text-align: center;
         color: #1E3A8A;
-        font-size: 40px;
+        font-size: 36px;
         font-weight: bold;
-        margin-bottom: 30px;
         padding: 20px;
         border-bottom: 2px solid #1E3A8A;
+        margin-bottom: 30px;
     }
-
-    [data-testid="stTable"] {
-        background-color: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    th {
-        background-color: #1E3A8A !important;
-        color: white !important;
-        text-align: right !important;
-    }
-
     .footer {
         position: fixed;
         left: 0;
@@ -54,14 +38,15 @@ st.markdown("""
         border-top: 3px solid #1e3a8a;
         z-index: 100;
     }
+    th { background-color: #1E3A8A !important; color: white !important; text-align: right !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # العنوان في منتصف الصفحة
-st.markdown('<div class="main-title">حاسبة الفروقات الوظيفية</div>', unsafe_allow_html=True)
+st.markdown('<div class="center-title">حاسبة الفروقات الوظيفية</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# الشريط الجانبي - الهوية الشخصية
+# الشريط الجانبي
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### 👤 بيانات المطور")
@@ -96,10 +81,9 @@ def calculate_promotion_logic(current_sal, current_date, prev_sal, prev_date, ba
 
 # 1️⃣ الإدخالات
 c1, c2 = st.columns(2)
-
 with c1:
     st.info("💰 المبالغ والرواتب")
-    name = st.text_input("اسم الموظف (اختياري للطباعة)", "")
+    emp_name = st.text_input("اسم الموظف (لاحتسابه في ملف الطباعة)", "")
     base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0)
     s1 = st.number_input("الراتب بعد العلاوة 1", value=0)
     s2 = st.number_input("الراتب بعد العلاوة 2", value=0)
@@ -152,21 +136,21 @@ if sp > 0 and dp:
 # 3️⃣ النتائج والطباعة
 if rows:
     st.markdown("### 📊 كشف المستحقات")
-    df_display = pd.DataFrame(rows)
-    st.table(df_display)
+    final_df = pd.DataFrame(rows)
+    st.table(final_df)
     
     total_gen = total_nom * rate
-    st.success(f"المستحق النهائي للموظف ({name}): {total_gen:,.1f} د.ع")
+    st.success(f"المستحق النهائي للموظف ({emp_name}): {total_gen:,.1f} د.ع")
 
-    # زر التحميل لملف الإكسل (CSV) جاهز للطباعة
-    csv = df_display.to_csv(index=False).encode('utf-8-sig')
+    # تصدير الملف كـ CSV يدعم العربية (UTF-8-SIG) للطباعة
+    csv_file = final_df.to_csv(index=False).encode('utf-8-sig')
     st.download_button(
-        label="📥 تحميل الملف للطباعة (Excel)",
-        data=csv,
-        file_name=f"فروقات_{name or 'موظف'}.csv",
+        label="📥 تحميل الملف جاهز للطباعة (Excel)",
+        data=csv_file,
+        file_name=f"فروقات_{emp_name or 'موظف'}.csv",
         mime='text/csv',
     )
 else:
     st.warning("أدخل البيانات لعرض النتائج.")
 
-st.markdown(f'<div class="footer">مصطفى حسن صكبان - شعبة حسابات الثانوي - محافظة الديوانية - {date.today().year} ©</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="footer">مصطفى حسن صكبان - شعبة حسابات الثانوي - محافظة الديوانية - 2026 ©</div>', unsafe_allow_html=True)
