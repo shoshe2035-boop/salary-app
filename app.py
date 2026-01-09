@@ -18,6 +18,7 @@ st.markdown("""
         .no-print { display: none !important; }
         .stTable { width: 100% !important; border-collapse: collapse; }
         .report-header { border: 2px solid #000; padding: 10px; margin-bottom: 20px; }
+        body { background-color: white !important; color: black !important; }
     }
     .report-header { text-align: center; border: 2px solid #000; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
     .center-title { text-align: center; color: #1E3A8A; font-size: 26px; font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
@@ -34,7 +35,7 @@ with st.sidebar:
     st.write("📍 محافظة الديوانية")
     st.write("📞 07702360003")
     st.divider()
-    st.success("تحديث التاريخ والمجاميع (V21) مفعّل ✅")
+    st.info("النسخة المطورة: جدول شامل ومجاميع نهائية (V22)")
 
 def get_months(start, end):
     if not start or not end or start >= end: return 0
@@ -47,17 +48,18 @@ def format_date_simple(d):
     return ""
 
 # ---------------------------------------------------------
-# واجهة الإدخال
+# 1️⃣ واجهة الإدخال
 # ---------------------------------------------------------
 st.markdown('<div class="no-print">', unsafe_allow_html=True)
+st.title("⚖️ حاسبة الفروقات (الإدخال السريع)")
 c1, c2 = st.columns(2)
 with c1:
     emp_name = st.text_input("اسم الموظف الكامل", "")
-    base_sal = st.number_input("الراتب الاسمي القديم", value=0) * 1000
+    base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0) * 1000
     s1, s2, s3 = st.number_input("راتب علاوة 1", 0)*1000, st.number_input("راتب علاوة 2", 0)*1000, st.number_input("راتب علاوة 3", 0)*1000
-    sp = st.number_input("راتب الترفيع", value=0) * 1000
+    sp = st.number_input("راتب الترفيع الوظيفي", value=0) * 1000
 with c2:
-    degree = st.selectbox("التحصيل العلمي", ["دكتوراه", "ماجستير", "دبلوم", "بكالوريوس", "اعدادية", "متوسطة", "ابتدائية", "أمية"], index=3)
+    degree = st.selectbox("التحصيل العلمي (الشهادة)", ["دكتوراه", "ماجستير", "دبلوم", "بكالوريوس", "اعدادية", "متوسطة", "ابتدائية", "أمية"], index=3)
     d1 = st.date_input("تاريخ العلاوة 1", value=None, format="DD/MM/YYYY")
     d2 = st.date_input("تاريخ العلاوة 2", value=None, format="DD/MM/YYYY")
     d3 = st.date_input("تاريخ العلاوة 3", value=None, format="DD/MM/YYYY")
@@ -66,7 +68,7 @@ with c2:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# العمليات الحسابية
+# 2️⃣ العمليات الحسابية
 # ---------------------------------------------------------
 rows = []
 total_nom = 0
@@ -84,45 +86,50 @@ def calc_logic(curr, prev, d_curr, d_prev):
 if s1 > 0 and d1:
     df, note = calc_logic(s1, base_sal, d1, None)
     m = get_months(d1, end1)
-    if m > 0: total_nom += (df * m); rows.append([1, "علاوة سنوية (1)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
+    if m > 0: total_nom += (df * m); rows.append([1, "علاوة سنوية رقم (1)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
 
 if s2 > 0 and d2:
     df, note = calc_logic(s2, s1, d2, d1)
     m = get_months(d2, end2)
-    if m > 0: total_nom += (df * m); rows.append([2, "علاوة سنوية (2)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
+    if m > 0: total_nom += (df * m); rows.append([2, "علاوة سنوية رقم (2)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
 
 if s3 > 0 and d3:
     ps, pd = (s2, d2) if s2 > 0 else (s1, d1)
     df, note = calc_logic(s3, ps, d3, pd)
     m = get_months(d3, end3)
-    if m > 0: total_nom += (df * m); rows.append([3, "علاوة سنوية (3)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
+    if m > 0: total_nom += (df * m); rows.append([3, "علاوة سنوية رقم (3)", m, f"{df:,.0f}", f"{df*m:,.0f}", note])
 
 if sp > 0 and dp:
     ps, pd = (s3, d3) if s3 > 0 else ((s2, d2) if s2 > 0 else (s1, d1))
     diff_calc = sp - base_sal if (pd and dp.year > pd.year) else sp - ps
     m = get_months(dp, de)
-    if m > 0: total_nom += (diff_calc * m); rows.append([4, "الترفيع الوظيفي", m, f"{diff_calc:,.0f}", f"{diff_calc*m:,.0f}", "سنة جديدة" if (pd and dp.year > pd.year) else "نفس السنة"])
+    if m > 0: total_nom += (diff_calc * m); rows.append([4, "الترفيع الوظيفي", m, f"{diff_calc:,.0f}", f"{diff_calc*m:,.0f}", "سنة جديدة (أساس)" if (pd and dp.year > pd.year) else "نفس السنة"])
 
 # ---------------------------------------------------------
-# عرض التقرير النهائي
+# 3️⃣ التقرير النهائي للطباعة
 # ---------------------------------------------------------
 if rows:
     total_gen = total_nom * rate
     st.markdown(f"""
     <div class="report-header">
-        <h3>جمهورية العراق - وزارة التربية</h3>
-        <h4>المديرية العامة لتربية محافظة الديوانية / الشؤون المالية</h4>
+        <h3 style="margin:0;">المديرية العامة لتربية محافظة الديوانية / الشؤون المالية</h3>
+        <p style="margin:5px;">شعبة حسابات الثانوي</p>
     </div>
     <div class="center-title">كشف احتساب الفروقات المالية</div>
     <div style="display: flex; justify-content: space-between; margin-bottom:10px;">
         <span><b>اسم الموظف:</b> {emp_name if emp_name else '................'}</span>
         <span><b>التحصيل العلمي:</b> {degree}</span>
-        <span><b>تاريخ الاستخراج:</b> {format_date_simple(datetime.now())}</span>
+        <span><b>تاريخ الاستخراج:</b> {format_date_simple(date.today())}</span>
     </div>
     <table style="width:100%;">
         <thead>
             <tr>
-                <th>ت</th><th>تفاصيل الاستحقاق</th><th>الأشهر</th><th>الفرق الشهري</th><th>الاسمي</th><th>الملاحظة</th>
+                <th style="width:5%;">ت</th>
+                <th style="width:30%;">تفاصيل الاستحقاق</th>
+                <th style="width:10%;">الأشهر</th>
+                <th style="width:20%;">الفرق الشهري</th>
+                <th style="width:20%;">الاسمي الكلي</th>
+                <th style="width:15%;">الملاحظة</th>
             </tr>
         </thead>
         <tbody>
@@ -131,14 +138,14 @@ if rows:
     for r in rows:
         st.markdown(f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>", unsafe_allow_html=True)
     
-    # إضافة صفوف المجاميع الكلية
+    # صفوف المجاميع مدمجة في أسفل الجدول كما في التصميم السابق
     st.markdown(f"""
             <tr class="total-row">
-                <td colspan="4">المجموع الكلي للفرق الاسمي</td>
+                <td colspan="4" style="text-align:left; padding-left:20px;">المجموع الكلي للفرق الاسمي</td>
                 <td colspan="2">{total_nom:,.0f} دينار</td>
             </tr>
-            <tr class="total-row" style="color:#1E3A8A;">
-                <td colspan="4">المجموع الكلي للفرق العام (بعد النسبة)</td>
+            <tr class="total-row" style="color:#1E3A8A; font-size:18px;">
+                <td colspan="4" style="text-align:left; padding-left:20px;">المجموع الكلي للفرق العام (بعد النسبة {int(rate*100)}%)</td>
                 <td colspan="2">{total_gen:,.0f} دينار</td>
             </tr>
         </tbody>
@@ -150,6 +157,8 @@ if rows:
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown('<div class="no-print" style="text-align:center; margin-top:20px;"><button onclick="window.print()">🖨️ طباعة التقرير</button></div>', unsafe_allow_html=True)
+    st.markdown('<div class="no-print" style="text-align:center; margin-top:20px;"><button onclick="window.print()">🖨️ طباعة التقرير الفوري</button></div>', unsafe_allow_html=True)
 else:
-    st.info("أدخل البيانات ليتم توليد كشف الطباعة.")
+    st.markdown('<div class="no-print">', unsafe_allow_html=True)
+    st.info("الرجاء إدخال الرواتب والتواريخ ليتم توليد جدول الفروقات.")
+    st.markdown('</div>', unsafe_allow_html=True)
