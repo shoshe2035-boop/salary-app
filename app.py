@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import date, datetime
 
 # ---------------------------------------------------------
-# إعدادات التنسيق المتقدمة
+# إعدادات التنسيق
 # ---------------------------------------------------------
 st.set_page_config(page_title="حاسبة الفروقات - مصطفى حسن", layout="centered")
 
@@ -13,12 +13,11 @@ st.markdown("""
     
     .report-header { text-align: center; border: 2px solid #000; padding: 10px; margin-bottom: 20px; }
     
-    /* تنسيق الجدول ليكون متوافقاً تماماً مع الورق والنتائج */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-    th, td { border: 1px solid black !important; padding: 8px; text-align: center !important; overflow: hidden; }
+    th, td { border: 1px solid black !important; padding: 8px; text-align: center !important; }
     th { background-color: #f2f2f2 !important; font-weight: bold; }
     
-    /* تحديد عرض الأعمدة لضمان المحاذاة */
+    /* تحديد عرض الأعمدة لضمان المحاذاة الدقيقة للمجاميع */
     .col-t { width: 5%; }
     .col-desc { width: 35%; }
     .col-months { width: 10%; }
@@ -30,7 +29,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h2 style="text-align:center; color:#1E3A8A; text-decoration:underline;">كشف احتساب الفروقات المالية</h2>', unsafe_allow_html=True)
+st.markdown('<h2 style="text-align:center; color:#1E3A8A; text-decoration:underline;">كشف احتساب الفروقات المالية (تعديل الترفيع)</h2>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # واجهة الإدخال
@@ -59,7 +58,7 @@ with st.expander("📝 إدخال البيانات", expanded=True):
         dp = st.date_input("تاريخ الترفيع", value=None, format="DD/MM/YYYY")
 
 # ---------------------------------------------------------
-# منطق الحساب المحدث (V29)
+# منطق الحساب المحدث (V30)
 # ---------------------------------------------------------
 def get_m(start, end):
     if not start or not end or start >= end: return 0
@@ -70,35 +69,48 @@ total_nominal = 0
 rates = {"بكالوريوس": 0.45, "دبلوم": 0.55, "ماجستير": 0.75, "دكتوراه": 1.0, "اعدادية": 0.25, "متوسطة": 0.15}
 rate = rates.get(degree, 0)
 
-# تحديد تواريخ النهاية لكل مرحلة بشكل متعاقب
+# تحديد تواريخ النهاية المتعاقبة
 end1 = (d2 or d3 or dp or de)
 end2 = (d3 or dp or de)
 end3 = (dp or de)
 endp = de
 
-# حساب العلاوة 1
+# 1. حساب العلاوة 1
 if s1 > 0 and d1:
     m = get_m(d1, end1); diff = s1 - base_sal
-    if m > 0: total_nominal += (diff * m); rows.append(["1", "علاوة سنوية رقم (1)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
+    if m > 0: 
+        total_nominal += (diff * m)
+        rows.append(["1", "علاوة سنوية رقم (1)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
 
-# حساب العلاوة 2
+# 2. حساب العلاوة 2
 if s2 > 0 and d2:
     m = get_m(d2, end2); diff = s2 - s1
-    if m > 0: total_nominal += (diff * m); rows.append(["2", "علاوة سنوية رقم (2)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
+    if m > 0: 
+        total_nominal += (diff * m)
+        rows.append(["2", "علاوة سنوية رقم (2)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
 
-# حساب العلاوة 3 (تم التأكد من تفعيلها هنا)
+# 3. حساب العلاوة 3
 if s3 > 0 and d3:
     m = get_m(d3, end3); diff = s3 - s2
-    if m > 0: total_nominal += (diff * m); rows.append(["3", "علاوة سنوية رقم (3)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
+    if m > 0: 
+        total_nominal += (diff * m)
+        rows.append(["3", "علاوة سنوية رقم (3)", m, f"{diff:,.0f}", f"{diff*m:,.0f}", "نفس السنة"])
 
-# حساب الترفيع (معادلة الفرق عن الأساس في السنة الجديدة)
+# 4. حساب الترفيع (تعديل: الترفيع - العلاوة السابقة مباشرة)
 if sp > 0 and dp:
-    last_d = (d3 or d2 or d1)
-    if last_d and dp.year > last_d.year:
-        f_diff = sp - base_sal # الترفيع - الأساس
-        note = "سنة جديدة"
+    # تحديد الراتب الذي يسبق الترفيع مباشرة
+    prev_sal = (s3 if s3 > 0 else (s2 if s2 > 0 else (s1 if s1 > 0 else base_sal)))
+    last_action_date = (d3 or d2 or d1)
+    
+    # حساب الفرق الشهري
+    diff_val = sp - prev_sal
+    
+    # قاعدة المضاعفة للسنة الجديدة (×2)
+    if last_action_date and dp.year > last_action_date.year:
+        f_diff = diff_val * 2
+        note = "سنة جديدة (×2)"
     else:
-        f_diff = sp - (s3 or s2 or s1 or base_sal)
+        f_diff = diff_val
         note = "نفس السنة"
     
     m = get_m(dp, endp)
@@ -107,7 +119,7 @@ if sp > 0 and dp:
         rows.append(["4", "الترفيع الوظيفي", m, f"{f_diff:,.0f}", f"{f_diff*m:,.0f}", note])
 
 # ---------------------------------------------------------
-# عرض النتائج في جدول الطباعة
+# عرض النتائج
 # ---------------------------------------------------------
 if rows:
     st.markdown(f"""
@@ -118,12 +130,7 @@ if rows:
     <table>
         <thead>
             <tr>
-                <th class="col-t">ت</th>
-                <th class="col-desc">تفاصيل الاستحقاق</th>
-                <th class="col-months">الأشهر</th>
-                <th class="col-diff">الفرق الشهري</th>
-                <th class="col-total">الاسمي الكلي</th>
-                <th class="col-note">الملاحظة</th>
+                <th class="col-t">ت</th><th class="col-desc">تفاصيل الاستحقاق</th><th class="col-months">الأشهر</th><th class="col-diff">الفرق الشهري</th><th class="col-total">الاسمي الكلي</th><th class="col-note">الملاحظة</th>
             </tr>
         </thead>
         <tbody>
@@ -133,7 +140,6 @@ if rows:
         st.markdown(f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>", unsafe_allow_html=True)
     
     total_gen = total_nominal * rate
-    # صف المجاميع بمحاذاة الأعمدة
     st.markdown(f"""
             <tr class="total-row">
                 <td colspan="4" style="text-align:left !important; padding-left:15px;">مجموع الفرق الاسمي</td>
@@ -153,7 +159,5 @@ if rows:
         <div>مدير القسم<br><br>__________</div>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.button("🖨️ طباعة الكشف (Ctrl + P)")
 else:
-    st.info("أدخل البيانات ليتم عرض الكشف.")
+    st.info("الرجاء إدخال البيانات لعرض التقرير.")
