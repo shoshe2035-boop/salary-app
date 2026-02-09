@@ -4,7 +4,7 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 # إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
+st.set_page_config(page_title="نظام الفروقات (ضبط التاريخ)", layout="centered")
 
 st.markdown("""
 <style>
@@ -17,10 +17,11 @@ st.markdown("""
     th { background-color: #f2f2f2 !important; font-weight: bold; }
     
     .no-print { background-color: #f4f4f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+    .note { font-size: 12px; color: red; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (الإصلاح النهائي)</h2>', unsafe_allow_html=True)
+st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (مع جبر التواريخ)</h2>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # 1️⃣ إدارة البيانات
@@ -42,7 +43,6 @@ with st.container():
     c1, c2 = st.columns(2)
     with c1:
         emp_name = st.text_input("اسم الموظف", "")
-        # هذا هو الراتب المرجعي (مثلاً 173)
         base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0) * 1000
     with c2:
         degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"], index=0)
@@ -51,6 +51,7 @@ with st.container():
     st.divider()
     
     # إضافة الحركات
+    st.markdown("<p class='note'>* ملاحظة: يوم 25 فما فوق يُحسب على الشهر القادم.</p>", unsafe_allow_html=True)
     cc1, cc2, cc3 = st.columns([2, 2, 2])
     with cc1:
         new_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي"])
@@ -84,19 +85,35 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي الصحيح (V35)
+# 3️⃣ المنطق الحسابي (تعديل الجبر فقط)
 # ---------------------------------------------------------
 
-def adjust_date(d):
+# دالة جبر التاريخ (يوم 25 فما فوق يصبح الشهر القادم)
+def get_adjusted_date(d):
     if d.day >= 25:
+        # إضافة أيام للانتقال للشهر التالي ثم العودة ليوم 1
         next_month = d.replace(day=28) + timedelta(days=4)
         return next_month.replace(day=1)
-    return d
+    else:
+        # يبقى في نفس الشهر (يوم 1) لغرض الحساب
+        return d.replace(day=1)
 
-def get_months(start, end):
-    adj_start = adjust_date(start)
-    if adj_start >= end: return 0
-    return (end.year - adj_start.year) * 12 + (end.month - adj_start.month)
+def calculate_months(start_date, end_date, is_last_period=False):
+    # ضبط البداية حسب قاعدة الجبر
+    adj_start = get_adjusted_date(start_date)
+    # ضبط النهاية (دائماً نعتبرها نهاية شهر لغرض العد)
+    adj_end = end_date.replace(day=1)
+    
+    if adj_start > adj_end: return 0
+    
+    # حساب الفرق بالأشهر
+    months = (adj_end.year - adj_start.year) * 12 + (adj_end.month - adj_start.month)
+    
+    # إذا كانت الفترة الأخيرة، نضيف 1 ليشمل شهر النهاية
+    if is_last_period:
+        months += 1
+        
+    return months
 
 rows = []
 total_nominal = 0
@@ -111,48 +128,38 @@ if st.session_state.actions:
         
         # 1. تحديد الراتب السابق للمقارنة
         if i == 0:
-            # الحركة الأولى دائماً تقارن بالراتب الأساسي المدخل في الأعلى
             prev_sal = base_sal
-            prev_year = curr['date'].year # نفترض نفس السنة للأولى
+            prev_year = curr['date'].year 
         else:
-            # الحركات التالية تقارن بما قبلها
             prev_sal = st.session_state.actions[i-1]['salary']
             prev_year = st.session_state.actions[i-1]['date'].year
         
-        # 2. تحديد تاريخ النهاية
+        # 2. تحديد الفترة الزمنية (الأشهر)
         if i < actions_count - 1:
-            end_date = st.session_state.actions[i+1]['date']
+            # فترة وسطية: من تاريخ الحالي إلى تاريخ التالي
+            next_date = st.session_state.actions[i+1]['date']
+            # هنا نستخدم get_adjusted_date للتالي أيضاً ليكون هو الحد الفاصل
+            months = calculate_months(curr['date'], get_adjusted_date(next_date), is_last_period=False)
         else:
-            end_date = end_calc_date
+            # الفترة الأخيرة: من تاريخ الحالي إلى نهاية الاحتساب
+            months = calculate_months(curr['date'], end_calc_date, is_last_period=True)
             
-        # 3. حساب الأشهر
-        # ضبط التواريخ للجبر أولاً
-        adj_curr_date = adjust_date(curr['date'])
-        # إذا كان هناك حركة تالية، يجب أن نضبط تاريخها أيضاً لمعرفة نهاية الفترة بدقة
-        # لكن للتبسيط سنستخدم دالة get_months التي تضبط البداية فقط
-        
-        months = get_months(curr['date'], end_date)
-        
         if months > 0:
+            # 3. منطق الفروقات (الثابت)
             is_new_year = (curr['date'].year > prev_year)
             
-            # --- قلب المنطق الحسابي ---
-            
-            # 1. إذا كانت سنة جديدة وترفيع وظيفي
+            # أ. ترفيع في سنة جديدة
             if is_new_year and curr['type'] == "ترفيع وظيفي":
-                # الفرق = الراتب الحالي - الراتب الأساسي الأول (العودة للأصل)
                 diff = curr['salary'] - base_sal
                 note = "سنة جديدة (الفرق عن الأساس)"
             
-            # 2. إذا كانت سنة جديدة وعلاوة
+            # ب. علاوة في سنة جديدة
             elif is_new_year and curr['type'] != "ترفيع وظيفي":
-                # الفرق = (الحالي - السابق) * 2
                 diff = (curr['salary'] - prev_sal) * 2
                 note = "سنة جديدة (مضاعفة ×2)"
                 
-            # 3. إذا كانت نفس السنة (علاوة أو ترفيع)
+            # ج. نفس السنة
             else:
-                # الفرق = الحالي - السابق مباشرة
                 diff = curr['salary'] - prev_sal
                 note = "نفس السنة"
             
