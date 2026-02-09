@@ -1,11 +1,10 @@
 import streamlit as st
 from datetime import date, timedelta
-import calendar
 
 # ---------------------------------------------------------
-# إعدادات التنسيق
+# إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="نظام الفروقات الشامل - مصطفى حسن", layout="centered")
+st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
 
 st.markdown("""
 <style>
@@ -18,14 +17,13 @@ st.markdown("""
     th { background-color: #f2f2f2 !important; font-weight: bold; }
     
     .no-print { background-color: #f4f4f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-    .note-text { font-size: 12px; color: #666; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (المقارنة بالأساس + جبر التواريخ)</h2>', unsafe_allow_html=True)
+st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (المنطق المزدوج: تتابع + سنوات)</h2>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1️⃣ إدارة البيانات (Session State)
+# 1️⃣ إدارة البيانات
 # ---------------------------------------------------------
 if 'actions' not in st.session_state:
     st.session_state.actions = []
@@ -39,37 +37,37 @@ def delete_action(index):
 # ---------------------------------------------------------
 with st.container():
     st.markdown('<div class="no-print">', unsafe_allow_html=True)
-    st.subheader("1. الثوابت (بداية الاحتساب)")
+    
+    # الثوابت
     c1, c2 = st.columns(2)
     with c1:
         emp_name = st.text_input("اسم الموظف", "")
-        # الراتب الأساسي هو المقياس لكل الحركات اللاحقة
-        base_sal = st.number_input("الراتب الاسمي القديم (الأساس المقبوض)", value=0) * 1000
+        base_sal = st.number_input("الراتب الاسمي القديم (الأساس)", value=0) * 1000
     with c2:
         degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"], index=0)
         end_calc_date = st.date_input("تاريخ نهاية الاحتساب", value=date.today(), format="DD/MM/YYYY")
     
     st.divider()
-    st.subheader("2. إضافة الحركات (علاوات / ترفيعات)")
-    st.markdown("<p class='note-text'>* ملاحظة: سيقوم النظام بجبر التاريخ تلقائياً (إذا كان اليوم 25 فما فوق، يُحسب من الشهر التالي).</p>", unsafe_allow_html=True)
     
+    # إضافة الحركات
+    st.caption("أدخل الحركات بالتسلسل (علاوة 1، علاوة 2، ترفيع...):")
     cc1, cc2, cc3 = st.columns([2, 2, 2])
     with cc1:
-        new_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي", "إضافة خدمة", "تعديل راتب"])
+        new_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي"])
     with cc2:
-        new_sal = st.number_input("راتب الحركة الجديد", value=0) * 1000
+        new_sal = st.number_input("الراتب الجديد", value=0) * 1000
     with cc3:
         new_date = st.date_input("تاريخ الاستحقاق", value=None, format="DD/MM/YYYY")
     
-    if st.button("➕ إضافة للقائمة"):
+    if st.button("➕ إضافة الحركة"):
         if new_sal > 0 and new_date:
             st.session_state.actions.append({"type": new_type, "salary": new_sal, "date": new_date})
             st.session_state.actions = sorted(st.session_state.actions, key=lambda x: x['date'])
             st.rerun()
         else:
-            st.error("تأكد من إدخال الراتب والتاريخ.")
+            st.error("أدخل البيانات كاملة.")
 
-    # عرض القائمة
+    # عرض الحركات
     if st.session_state.actions:
         st.write("---")
         for i, act in enumerate(st.session_state.actions):
@@ -80,34 +78,27 @@ with st.container():
             with c_show3: st.write(f"{act['salary']:,.0f}")
             with c_show4: st.write(f"{act['date'].strftime('%d/%m/%Y')}")
 
-    if st.button("🔄 تصفير الكل"):
+    if st.button("🔄 تصفير القائمة"):
         st.session_state.actions = []
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي (المعادلة الموحدة + جبر التاريخ)
+# 3️⃣ المنطق الحسابي (الخوارزمية المصححة V34)
 # ---------------------------------------------------------
 
-# دالة ذكية لضبط التاريخ (جبر الكسر)
-def adjust_date_logic(d):
-    # القاعدة: إذا كان اليوم >= 25، نعتبر البداية من أول الشهر القادم
+# دالة جبر التاريخ (يوم 25 فما فوق يصبح الشهر القادم)
+def adjust_date(d):
     if d.day >= 25:
-        # الانتقال للشهر التالي
+        # الانتقال لأول يوم في الشهر التالي
         next_month = d.replace(day=28) + timedelta(days=4)
-        return next_month.replace(day=1) # أول يوم من الشهر التالي
-    else:
-        # البقاء في نفس الشهر (يمكنك تعديل الشرط ليكون يوم 1)
-        # هنا سنعتمد نفس الشهر للحساب
-        return d
+        return next_month.replace(day=1)
+    return d
 
-def get_months_diff(start_date, end_date):
-    # ضبط تواريخ البداية والنهاية حسب قواعد الجبر
-    adj_start = adjust_date_logic(start_date)
-    
-    # حساب الفرق بالأشهر الكاملة
-    if adj_start >= end_date: return 0
-    return (end_date.year - adj_start.year) * 12 + (end_date.month - adj_start.month)
+def get_months(start, end):
+    adj_start = adjust_date(start)
+    if adj_start >= end: return 0
+    return (end.year - adj_start.year) * 12 + (end.month - adj_start.month)
 
 rows = []
 total_nominal = 0
@@ -118,48 +109,64 @@ if st.session_state.actions:
     actions_count = len(st.session_state.actions)
     
     for i in range(actions_count):
-        current_act = st.session_state.actions[i]
+        curr = st.session_state.actions[i]
         
-        # 1. تحديد تاريخ نهاية هذه الحركة
-        if i < actions_count - 1:
-            raw_end_date = st.session_state.actions[i+1]['date']
+        # 1. تحديد الراتب السابق وتاريخه للمقارنة
+        if i == 0:
+            prev_sal = base_sal
+            # نفترض تاريخ وهمي للسابق لغرض المقارنة (نفس السنة لتجنب تفعيل شرط السنة الجديدة لأول حركة إلا إذا أردت ذلك)
+            prev_year = curr['date'].year 
         else:
-            raw_end_date = end_calc_date
+            prev_sal = st.session_state.actions[i-1]['salary']
+            prev_year = st.session_state.actions[i-1]['date'].year
         
-        # ضبط تواريخ البداية والنهاية للحساب
-        calc_start = adjust_date_logic(current_act['date'])
-        
-        # التأكد من أن تاريخ النهاية أيضاً يتبع منطق الأشهر (نهاية الفترة)
-        # في حساب الفروقات، عادة نحسب لغاية بداية الشهر الذي يليه أو تاريخ القطع
-        months = get_months_diff(current_act['date'], raw_end_date)
+        # 2. تحديد تاريخ النهاية
+        if i < actions_count - 1:
+            end_date = st.session_state.actions[i+1]['date']
+        else:
+            end_date = end_calc_date
+            
+        # 3. حساب الأشهر
+        months = get_months(curr['date'], end_date)
         
         if months > 0:
-            # -------------------------------------------------------
-            # المعادلة الذهبية: (راتب الحركة الحالي - الراتب الأساسي القديم)
-            # -------------------------------------------------------
-            diff_val = current_act['salary'] - base_sal
+            # 🔄 فحص السنة الجديدة
+            is_new_year = (curr['date'].year > prev_year)
             
-            # تحديد الملاحظة
-            date_note = ""
-            if current_act['date'].day >= 25:
-                date_note = f"(جبر التاريخ إلى {calc_start.month}/{calc_start.year})"
+            # 🔢 حساب الفروقات
             
-            note = f"مقارنة بالأساس {base_sal:,.0f} {date_note}"
+            # الحالة أ: سنة جديدة
+            if is_new_year:
+                if curr['type'] == "ترفيع وظيفي":
+                    # قاعدة الترفيع في سنة جديدة: (الحالي - الأساس القديم)
+                    diff = curr['salary'] - base_sal
+                    note = "سنة جديدة (الفرق عن الأساس)"
+                else:
+                    # قاعدة العلاوة في سنة جديدة: (الحالي - السابق) × 2
+                    diff = (curr['salary'] - prev_sal) * 2
+                    note = "سنة جديدة (مضاعفة ×2)"
             
-            row_total = diff_val * months
+            # الحالة ب: نفس السنة
+            else:
+                # الفرق الطبيعي: (الحالي - السابق)
+                diff = curr['salary'] - prev_sal
+                note = "نفس السنة"
+            
+            # الحفظ
+            row_total = diff * months
             total_nominal += row_total
             
             rows.append({
                 "ت": i + 1,
-                "نوع": current_act['type'],
+                "نوع": curr['type'],
                 "أشهر": months,
-                "فرق": f"{diff_val:,.0f}",
+                "فرق": f"{diff:,.0f}",
                 "اسمي": f"{row_total:,.0f}",
                 "ملاحظة": note
             })
 
 # ---------------------------------------------------------
-# 4️⃣ عرض الجدول للطباعة
+# 4️⃣ طباعة التقرير
 # ---------------------------------------------------------
 if rows:
     st.markdown(f"""
@@ -170,12 +177,8 @@ if rows:
     <table>
         <thead>
             <tr>
-                <th width="5%">ت</th>
-                <th width="25%">نوع الحركة</th>
-                <th width="10%">الأشهر</th>
-                <th width="15%">الفرق (عن الأساس)</th>
-                <th width="15%">الاسمي الكلي</th>
-                <th width="30%">الملاحظة</th>
+                <th width="5%">ت</th><th width="25%">نوع الحركة</th><th width="10%">الأشهر</th>
+                <th width="15%">الفرق الشهري</th><th width="15%">الاسمي الكلي</th><th width="30%">الملاحظة</th>
             </tr>
         </thead>
         <tbody>
@@ -196,7 +199,6 @@ if rows:
             </tr>
         </tbody>
     </table>
-    
     <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
         <div>منظم الجدول<br><br>__________</div>
         <div>التدقيق<br><br>__________</div>
@@ -206,4 +208,4 @@ if rows:
     
     st.markdown('<div class="no-print" style="text-align:center; margin-top:20px;"><button onclick="window.print()">🖨️ طباعة الكشف</button></div>', unsafe_allow_html=True)
 else:
-    st.info("قم بإضافة الحركات من اللوحة أعلاه.")
+    st.info("أضف الحركات ليتم الاحتساب.")
