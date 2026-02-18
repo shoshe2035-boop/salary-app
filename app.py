@@ -6,14 +6,32 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
 
-# مفتاح التبديل اليدوي في الشريط الجانبي
+# ---------------------------------------------------------
+# التحكم اليدوي بالوضع الداكن عبر session_state
+# ---------------------------------------------------------
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False  # القيمة الافتراضية: حسب النظام
+
+# شريط جانبي للتحكم
 with st.sidebar:
     st.header("الإعدادات")
-    dark_mode = st.toggle("الوضع الداكن (يدوي)", value=False)
+    # عند تغيير التبديل، يتم تحديث session_state وإعادة التشغيل
+    def toggle_dark():
+        st.session_state.dark_mode = not st.session_state.dark_mode
+        st.rerun()
+    
+    st.toggle(
+        "الوضع الداكن (يدوي)",
+        value=st.session_state.dark_mode,
+        key="dark_mode_toggle",
+        on_change=toggle_dark
+    )
     st.caption("إذا كان غير مفعل، يعتمد على إعدادات النظام.")
 
-# تحديد المتغيرات حسب الوضع (يدوي أو تلقائي)
-if dark_mode:
+# ---------------------------------------------------------
+# تطبيق CSS بناءً على حالة session_state
+# ---------------------------------------------------------
+if st.session_state.dark_mode:
     # وضع داكن يدوي
     bg_color = "#1e1e1e"
     text_color = "#e0e0e0"
@@ -24,10 +42,11 @@ if dark_mode:
     button_bg = "#0a2472"
     button_text = "#ffffff"
     table_row_alt = "#2a2a2a"
-    blue_bg = "#0a2472"  # خلفية زرقاء للصفوف المهمة
+    blue_bg = "#0a2472"
+    # إلغاء تأثير prefers-color-scheme
+    auto_dark_media = ""
 else:
-    # الوضع الفاتح أو تلقائي (سيتم التحكم عبر prefers-color-scheme)
-    # هنا نضع قيم افتراضية للفاتح، لكننا سنستخدم prefers-color-scheme للتحكم التلقائي
+    # الوضع الفاتح أو تلقائي (نعتمد على prefers-color-scheme)
     bg_color = "#ffffff"
     text_color = "#000000"
     border_color = "#000000"
@@ -38,13 +57,29 @@ else:
     button_text = "white"
     table_row_alt = "#f9f9f9"
     blue_bg = "#1E3A8A"
+    # نضيف media query للوضع التلقائي
+    auto_dark_media = """
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #555;
+            --header-bg: #333;
+            --no-print-bg: #2d2d2d;
+            --no-print-border: #444;
+            --button-bg: #0a2472;
+            --button-text: #ffffff;
+            --table-row-alt: #2a2a2a;
+            --blue-bg: #0a2472;
+        }
+    }
+    """
 
-# CSS مخصص يدعم المفتاح اليدوي وتفضيل النظام
+# CSS المخصص
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    /* المتغيرات الأساسية (تستبدل حسب الوضع) */
     :root {{
         --bg-color: {bg_color};
         --text-color: {text_color};
@@ -58,25 +93,8 @@ st.markdown(f"""
         --blue-bg: {blue_bg};
     }}
     
-    /* إذا كان المفتاح اليدوي غير مفعل، نعتمد على تفضيل النظام */
-    {" " if dark_mode else """
-    @media (prefers-color-scheme: dark) {{
-        :root {{
-            --bg-color: #1e1e1e;
-            --text-color: #e0e0e0;
-            --border-color: #555;
-            --header-bg: #333;
-            --no-print-bg: #2d2d2d;
-            --no-print-border: #444;
-            --button-bg: #0a2472;
-            --button-text: #ffffff;
-            --table-row-alt: #2a2a2a;
-            --blue-bg: #0a2472;
-        }}
-    }}
-    """}
+    {auto_dark_media}
     
-    /* تطبيق المتغيرات */
     html, body, .main {{
         font-family: 'Cairo', sans-serif;
         direction: rtl;
@@ -118,7 +136,6 @@ st.markdown(f"""
         margin-bottom: 20px;
     }}
     
-    /* تنسيق الأزرار */
     button {{
         background-color: var(--button-bg);
         color: var(--button-text);
@@ -128,7 +145,6 @@ st.markdown(f"""
         border: none;
     }}
     
-    /* تنسيق صفوف الإجمالي (أزرق موحد) */
     .total-row {{
         background-color: var(--blue-bg) !important;
         color: white !important;
@@ -291,7 +307,7 @@ if rows:
     
     total_gen = total_nominal * current_rate
     
-    # صف مجموع الفرق الاسمي (بنفس تنسيق المستحق الصافي)
+    # صفوف الإجمالي بتنسيق موحد
     st.markdown(f"""
         <tr class="total-row">
             <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
