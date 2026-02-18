@@ -6,27 +6,62 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
 
-# CSS متكامل يدعم الوضع التلقائي (dark/light)
-st.markdown("""
+# مفتاح التبديل اليدوي في الشريط الجانبي
+with st.sidebar:
+    st.header("الإعدادات")
+    dark_mode = st.toggle("الوضع الداكن (يدوي)", value=False)
+    st.caption("إذا كان غير مفعل، يعتمد على إعدادات النظام.")
+
+# تحديد المتغيرات حسب الوضع (يدوي أو تلقائي)
+if dark_mode:
+    # وضع داكن يدوي
+    bg_color = "#1e1e1e"
+    text_color = "#e0e0e0"
+    border_color = "#555"
+    header_bg = "#333"
+    no_print_bg = "#2d2d2d"
+    no_print_border = "#444"
+    button_bg = "#0a2472"
+    button_text = "#ffffff"
+    table_row_alt = "#2a2a2a"
+    blue_bg = "#0a2472"  # خلفية زرقاء للصفوف المهمة
+else:
+    # الوضع الفاتح أو تلقائي (سيتم التحكم عبر prefers-color-scheme)
+    # هنا نضع قيم افتراضية للفاتح، لكننا سنستخدم prefers-color-scheme للتحكم التلقائي
+    bg_color = "#ffffff"
+    text_color = "#000000"
+    border_color = "#000000"
+    header_bg = "#f2f2f2"
+    no_print_bg = "#f4f4f9"
+    no_print_border = "#ddd"
+    button_bg = "#1E3A8A"
+    button_text = "white"
+    table_row_alt = "#f9f9f9"
+    blue_bg = "#1E3A8A"
+
+# CSS مخصص يدعم المفتاح اليدوي وتفضيل النظام
+st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    /* المتغيرات العامة للوضع الفاتح */
-    :root {
-        --bg-color: #ffffff;
-        --text-color: #000000;
-        --border-color: #000000;
-        --header-bg: #f2f2f2;
-        --no-print-bg: #f4f4f9;
-        --no-print-border: #ddd;
-        --button-bg: #1E3A8A;
-        --button-text: white;
-        --table-row-alt: #f9f9f9;
-    }
+    /* المتغيرات الأساسية (تستبدل حسب الوضع) */
+    :root {{
+        --bg-color: {bg_color};
+        --text-color: {text_color};
+        --border-color: {border_color};
+        --header-bg: {header_bg};
+        --no-print-bg: {no_print_bg};
+        --no-print-border: {no_print_border};
+        --button-bg: {button_bg};
+        --button-text: {button_text};
+        --table-row-alt: {table_row_alt};
+        --blue-bg: {blue_bg};
+    }}
     
-    /* الوضع الداكن حسب تفضيل النظام */
-    @media (prefers-color-scheme: dark) {
-        :root {
+    /* إذا كان المفتاح اليدوي غير مفعل، نعتمد على تفضيل النظام */
+    {" " if dark_mode else """
+    @media (prefers-color-scheme: dark) {{
+        :root {{
             --bg-color: #1e1e1e;
             --text-color: #e0e0e0;
             --border-color: #555;
@@ -36,77 +71,74 @@ st.markdown("""
             --button-bg: #0a2472;
             --button-text: #ffffff;
             --table-row-alt: #2a2a2a;
-        }
-        /* تحسين مظهر الجداول في الوضع الداكن */
-        table {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-        th {
-            background-color: var(--header-bg) !important;
-            color: var(--text-color) !important;
-        }
-        td {
-            border-color: var(--border-color) !important;
-        }
-        /* تحسين الروابط والأزرار */
-        .stButton > button {
-            background-color: var(--button-bg);
-            color: var(--button-text);
-            border: none;
-        }
-    }
+            --blue-bg: #0a2472;
+        }}
+    }}
+    """}
     
-    /* تطبيق المتغيرات على العناصر */
-    html, body, .main {
+    /* تطبيق المتغيرات */
+    html, body, .main {{
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
         background-color: var(--bg-color);
         color: var(--text-color);
-    }
+    }}
     
-    .report-header {
+    .report-header {{
         text-align: center;
         border: 2px solid var(--border-color);
         padding: 10px;
         margin-bottom: 20px;
-    }
+    }}
     
-    table {
+    table {{
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
         table-layout: fixed;
-    }
+    }}
     
-    th, td {
+    th, td {{
         border: 1px solid var(--border-color) !important;
         padding: 8px;
         text-align: center !important;
-    }
+    }}
     
-    th {
+    th {{
         background-color: var(--header-bg) !important;
         font-weight: bold;
-    }
+    }}
     
-    .no-print {
+    .no-print {{
         background-color: var(--no-print-bg);
         padding: 15px;
         border-radius: 8px;
         border: 1px solid var(--no-print-border);
         margin-bottom: 20px;
-    }
+    }}
     
-    /* تحسين عرض الأزرار */
-    button {
+    /* تنسيق الأزرار */
+    button {{
         background-color: var(--button-bg);
         color: var(--button-text);
         border-radius: 5px;
         padding: 8px 15px;
         cursor: pointer;
-    }
+        border: none;
+    }}
+    
+    /* تنسيق صفوف الإجمالي (أزرق موحد) */
+    .total-row {{
+        background-color: var(--blue-bg) !important;
+        color: white !important;
+        font-weight: bold;
+    }}
+    .total-row td {{
+        background-color: var(--blue-bg) !important;
+        color: white !important;
+        border-color: var(--border-color) !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,7 +204,7 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي (القاعدة الجديدة مع التراكم)
+# 3️⃣ المنطق الحسابي
 # ---------------------------------------------------------
 
 def adjust_date(d):
@@ -236,7 +268,7 @@ if st.session_state.actions:
         prev_year = curr['date'].year
 
 # ---------------------------------------------------------
-# 4️⃣ طباعة التقرير (مع زر طباعة يعمل)
+# 4️⃣ طباعة التقرير
 # ---------------------------------------------------------
 if rows:
     st.markdown(f"""
@@ -258,15 +290,20 @@ if rows:
         st.markdown(f"<tr><td>{r['ت']}</td><td>{r['نوع']}</td><td>{r['أشهر']}</td><td>{r['فرق']}</td><td>{r['اسمي']}</td><td>{r['ملاحظة']}</td></tr>", unsafe_allow_html=True)
     
     total_gen = total_nominal * current_rate
+    
+    # صف مجموع الفرق الاسمي (بنفس تنسيق المستحق الصافي)
     st.markdown(f"""
-            <tr style="font-weight:bold; background:{'#f9f9f9' if not st.get_option('theme.base')=='dark' else '#2a2a2a'};">
-                <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
-                <td>{total_nominal:,}</td><td>دينار</td>
-            </tr>
-            <tr style="font-weight:bold; color:blue;">
-                <td colspan="4" style="text-align:left; padding-left:15px;">المستحق الصافي ({int(current_rate*100)}%)</td>
-                <td>{total_gen:,}</td><td>دينار</td>
-            </tr>
+        <tr class="total-row">
+            <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
+            <td>{total_nominal:,}</td><td>دينار</td>
+        </tr>
+        <tr class="total-row">
+            <td colspan="4" style="text-align:left; padding-left:15px;">المستحق الصافي ({int(current_rate*100)}%)</td>
+            <td>{total_gen:,}</td><td>دينار</td>
+        </tr>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
         </tbody>
     </table>
     <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
@@ -276,7 +313,7 @@ if rows:
     </div>
     """, unsafe_allow_html=True)
     
-    # زر الطباعة الفعّال باستخدام components.html
+    # زر الطباعة الفعّال
     st.markdown("""
     <div style="text-align:center; margin-top:20px;">
         <button onclick="window.print()" style="background-color: #1E3A8A; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
