@@ -6,155 +6,73 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
 
-# ---------------------------------------------------------
-# التحكم اليدوي بالوضع الداكن عبر session_state
-# ---------------------------------------------------------
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False  # القيمة الافتراضية: حسب النظام
-
-# شريط جانبي للتحكم
-with st.sidebar:
-    st.header("الإعدادات")
-    # عند تغيير التبديل، يتم تحديث session_state وإعادة التشغيل
-    def toggle_dark():
-        st.session_state.dark_mode = not st.session_state.dark_mode
-        st.rerun()
-    
-    st.toggle(
-        "الوضع الداكن (يدوي)",
-        value=st.session_state.dark_mode,
-        key="dark_mode_toggle",
-        on_change=toggle_dark
-    )
-    st.caption("إذا كان غير مفعل، يعتمد على إعدادات النظام.")
-
-# ---------------------------------------------------------
-# تطبيق CSS بناءً على حالة session_state
-# ---------------------------------------------------------
-if st.session_state.dark_mode:
-    # وضع داكن يدوي
-    bg_color = "#1e1e1e"
-    text_color = "#e0e0e0"
-    border_color = "#555"
-    header_bg = "#333"
-    no_print_bg = "#2d2d2d"
-    no_print_border = "#444"
-    button_bg = "#0a2472"
-    button_text = "#ffffff"
-    table_row_alt = "#2a2a2a"
-    blue_bg = "#0a2472"
-    # إلغاء تأثير prefers-color-scheme
-    auto_dark_media = ""
-else:
-    # الوضع الفاتح أو تلقائي (نعتمد على prefers-color-scheme)
-    bg_color = "#ffffff"
-    text_color = "#000000"
-    border_color = "#000000"
-    header_bg = "#f2f2f2"
-    no_print_bg = "#f4f4f9"
-    no_print_border = "#ddd"
-    button_bg = "#1E3A8A"
-    button_text = "white"
-    table_row_alt = "#f9f9f9"
-    blue_bg = "#1E3A8A"
-    # نضيف media query للوضع التلقائي
-    auto_dark_media = """
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --bg-color: #1e1e1e;
-            --text-color: #e0e0e0;
-            --border-color: #555;
-            --header-bg: #333;
-            --no-print-bg: #2d2d2d;
-            --no-print-border: #444;
-            --button-bg: #0a2472;
-            --button-text: #ffffff;
-            --table-row-alt: #2a2a2a;
-            --blue-bg: #0a2472;
-        }
-    }
-    """
-
-# CSS المخصص
-st.markdown(f"""
+# CSS ثابت (ألوان واضحة في جميع الظروف)
+st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    :root {{
-        --bg-color: {bg_color};
-        --text-color: {text_color};
-        --border-color: {border_color};
-        --header-bg: {header_bg};
-        --no-print-bg: {no_print_bg};
-        --no-print-border: {no_print_border};
-        --button-bg: {button_bg};
-        --button-text: {button_text};
-        --table-row-alt: {table_row_alt};
-        --blue-bg: {blue_bg};
-    }}
-    
-    {auto_dark_media}
-    
-    html, body, .main {{
+    html, body, .main {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-    }}
+        background-color: #ffffff;
+        color: #000000;
+    }
     
-    .report-header {{
+    .report-header {
         text-align: center;
-        border: 2px solid var(--border-color);
+        border: 2px solid #000000;
         padding: 10px;
         margin-bottom: 20px;
-    }}
+    }
     
-    table {{
+    table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
         table-layout: fixed;
-    }}
+    }
     
-    th, td {{
-        border: 1px solid var(--border-color) !important;
+    th, td {
+        border: 1px solid #000000 !important;
         padding: 8px;
         text-align: center !important;
-    }}
+    }
     
-    th {{
-        background-color: var(--header-bg) !important;
+    th {
+        background-color: #f2f2f2 !important;
         font-weight: bold;
-    }}
+    }
     
-    .no-print {{
-        background-color: var(--no-print-bg);
+    .no-print {
+        background-color: #f4f4f9;
         padding: 15px;
         border-radius: 8px;
-        border: 1px solid var(--no-print-border);
+        border: 1px solid #ddd;
         margin-bottom: 20px;
-    }}
+    }
     
-    button {{
-        background-color: var(--button-bg);
-        color: var(--button-text);
+    /* تنسيق الأزرار */
+    button {
+        background-color: #1E3A8A;
+        color: white;
         border-radius: 5px;
         padding: 8px 15px;
         cursor: pointer;
         border: none;
-    }}
+    }
     
-    .total-row {{
-        background-color: var(--blue-bg) !important;
+    /* صفوف الإجمالي */
+    .total-row {
+        background-color: #1E3A8A !important;
         color: white !important;
         font-weight: bold;
-    }}
-    .total-row td {{
-        background-color: var(--blue-bg) !important;
+    }
+    .total-row td {
+        background-color: #1E3A8A !important;
         color: white !important;
-        border-color: var(--border-color) !important;
-    }}
+        border-color: #000000 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -332,9 +250,7 @@ if rows:
     # زر الطباعة الفعّال
     st.markdown("""
     <div style="text-align:center; margin-top:20px;">
-        <button onclick="window.print()" style="background-color: #1E3A8A; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-            🖨️ طباعة الكشف
-        </button>
+        <button onclick="window.print()">🖨️ طباعة الكشف</button>
     </div>
     """, unsafe_allow_html=True)
     
