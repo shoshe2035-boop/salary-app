@@ -6,17 +6,107 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
 
+# CSS متكامل يدعم الوضع التلقائي (dark/light)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-    html, body, .main { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     
-    .report-header { text-align: center; border: 2px solid #000; padding: 10px; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-    th, td { border: 1px solid black !important; padding: 8px; text-align: center !important; }
-    th { background-color: #f2f2f2 !important; font-weight: bold; }
+    /* المتغيرات العامة للوضع الفاتح */
+    :root {
+        --bg-color: #ffffff;
+        --text-color: #000000;
+        --border-color: #000000;
+        --header-bg: #f2f2f2;
+        --no-print-bg: #f4f4f9;
+        --no-print-border: #ddd;
+        --button-bg: #1E3A8A;
+        --button-text: white;
+        --table-row-alt: #f9f9f9;
+    }
     
-    .no-print { background-color: #f4f4f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+    /* الوضع الداكن حسب تفضيل النظام */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #555;
+            --header-bg: #333;
+            --no-print-bg: #2d2d2d;
+            --no-print-border: #444;
+            --button-bg: #0a2472;
+            --button-text: #ffffff;
+            --table-row-alt: #2a2a2a;
+        }
+        /* تحسين مظهر الجداول في الوضع الداكن */
+        table {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        th {
+            background-color: var(--header-bg) !important;
+            color: var(--text-color) !important;
+        }
+        td {
+            border-color: var(--border-color) !important;
+        }
+        /* تحسين الروابط والأزرار */
+        .stButton > button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            border: none;
+        }
+    }
+    
+    /* تطبيق المتغيرات على العناصر */
+    html, body, .main {
+        font-family: 'Cairo', sans-serif;
+        direction: rtl;
+        text-align: right;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+    
+    .report-header {
+        text-align: center;
+        border: 2px solid var(--border-color);
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        table-layout: fixed;
+    }
+    
+    th, td {
+        border: 1px solid var(--border-color) !important;
+        padding: 8px;
+        text-align: center !important;
+    }
+    
+    th {
+        background-color: var(--header-bg) !important;
+        font-weight: bold;
+    }
+    
+    .no-print {
+        background-color: var(--no-print-bg);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid var(--no-print-border);
+        margin-bottom: 20px;
+    }
+    
+    /* تحسين عرض الأزرار */
+    button {
+        background-color: var(--button-bg);
+        color: var(--button-text);
+        border-radius: 5px;
+        padding: 8px 15px;
+        cursor: pointer;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,7 +128,6 @@ def delete_action(index):
 with st.container():
     st.markdown('<div class="no-print">', unsafe_allow_html=True)
     
-    # الثوابت (بدون تاريخ للراتب الأساسي)
     c1, c2 = st.columns(2)
     with c1:
         emp_name = st.text_input("اسم الموظف", "")
@@ -50,7 +139,6 @@ with st.container():
     
     st.divider()
     
-    # إضافة الحركات
     st.caption("أدخل الحركات بالتسلسل (علاوة سنوية، ترفيع وظيفي...):")
     cc1, cc2, cc3 = st.columns([2, 2, 2])
     with cc1:
@@ -68,7 +156,6 @@ with st.container():
         else:
             st.error("أدخل البيانات كاملة.")
 
-    # عرض الحركات
     if st.session_state.actions:
         st.write("---")
         for i, act in enumerate(st.session_state.actions):
@@ -85,10 +172,9 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي (القاعدة الجديدة مع التراكم - بدون تاريخ أساسي)
+# 3️⃣ المنطق الحسابي (القاعدة الجديدة مع التراكم)
 # ---------------------------------------------------------
 
-# دالة جبر التاريخ (يوم 25 فما فوق يصبح أول الشهر التالي)
 def adjust_date(d):
     if d.day >= 25:
         next_month = d.replace(day=28) + timedelta(days=4)
@@ -107,41 +193,30 @@ rates = {"بكالوريوس": 0.45, "دبلوم": 0.55, "ماجستير": 0.75,
 current_rate = rates.get(degree, 0)
 
 if st.session_state.actions:
-    # متغير تراكمي لتجميع الفروقات الأساسية
     cumulative_diff = 0
-    # الراتب السابق وتاريخه للحركة الأولى (الراتب الأساسي)
     prev_salary = base_sal
-    # لا يوجد تاريخ للراتب الأساسي، لذلك نعامل الحركة الأولى كما لو كانت سنة سابقة غير معروفة → لن تطبق قاعدة السنة الجديدة على الحركة الأولى
-    # سنستخدم متغير prev_year لتخزين سنة آخر حركة
     prev_year = None
 
     for i, curr in enumerate(st.session_state.actions):
-        # 1. تحديد الفرق الأساسي (current - previous)
         base_diff = curr['salary'] - prev_salary
 
-        # 2. هل السنة جديدة؟ (تقارن مع آخر سنة معروفة)
         if prev_year is None:
-            # الحركة الأولى: لا توجد سنة سابقة، نعتبرها نفس السنة
             is_new_year = False
         else:
             is_new_year = (curr['date'].year > prev_year)
 
-        # 3. الفرق الفعلي بعد تطبيق قاعدة السنة الجديدة (تراكم)
         if is_new_year:
             effective_diff = base_diff + cumulative_diff
         else:
             effective_diff = base_diff
 
-        # 4. تحديث التراكم (يضاف إليه الفرق الأساسي دائماً)
         cumulative_diff += base_diff
 
-        # 5. تحديد تاريخ نهاية الفترة للحركة الحالية
         if i < len(st.session_state.actions) - 1:
             end_date = st.session_state.actions[i+1]['date']
         else:
             end_date = end_calc_date
 
-        # 6. حساب عدد الأشهر
         months = get_months(curr['date'], end_date)
 
         if months > 0:
@@ -157,12 +232,11 @@ if st.session_state.actions:
                 "ملاحظة": "سنة جديدة (بتراكم)" if is_new_year else "نفس السنة"
             })
 
-        # تحديث المتغيرات السابقة للحركة التالية
         prev_salary = curr['salary']
         prev_year = curr['date'].year
 
 # ---------------------------------------------------------
-# 4️⃣ طباعة التقرير
+# 4️⃣ طباعة التقرير (مع زر طباعة يعمل)
 # ---------------------------------------------------------
 if rows:
     st.markdown(f"""
@@ -185,7 +259,7 @@ if rows:
     
     total_gen = total_nominal * current_rate
     st.markdown(f"""
-            <tr style="font-weight:bold; background:#f9f9f9;">
+            <tr style="font-weight:bold; background:{'#f9f9f9' if not st.get_option('theme.base')=='dark' else '#2a2a2a'};">
                 <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
                 <td>{total_nominal:,}</td><td>دينار</td>
             </tr>
@@ -202,6 +276,14 @@ if rows:
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown('<div class="no-print" style="text-align:center; margin-top:20px;"><button onclick="window.print()">🖨️ طباعة الكشف</button></div>', unsafe_allow_html=True)
+    # زر الطباعة الفعّال باستخدام components.html
+    st.markdown("""
+    <div style="text-align:center; margin-top:20px;">
+        <button onclick="window.print()" style="background-color: #1E3A8A; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+            🖨️ طباعة الكشف
+        </button>
+    </div>
+    """, unsafe_allow_html=True)
+    
 else:
     st.info("أضف الحركات ليتم الاحتساب.")
