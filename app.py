@@ -1,12 +1,13 @@
 import streamlit as st
 from datetime import date, timedelta
+import uuid
 
 # ---------------------------------------------------------
 # إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="نظام الفروقات الدقيق - مصطفى حسن", layout="centered")
+st.set_page_config(page_title="نظام الفروقات - موظفين متعددين", layout="wide")
 
-# CSS ثابت (ألوان واضحة في جميع الظروف)
+# CSS ثابت
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -17,6 +18,10 @@ st.markdown("""
         text-align: right;
         background-color: #ffffff;
         color: #000000;
+    }
+    
+    h1, h2, h3 {
+        color: #1E3A8A;
     }
     
     .report-header {
@@ -52,7 +57,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* تنسيق الأزرار */
     button {
         background-color: #1E3A8A;
         color: white;
@@ -62,7 +66,6 @@ st.markdown("""
         border: none;
     }
     
-    /* صفوف الإجمالي */
     .total-row {
         background-color: #1E3A8A !important;
         color: white !important;
@@ -73,74 +76,66 @@ st.markdown("""
         color: white !important;
         border-color: #000000 !important;
     }
+    
+    /* تنسيق الجدول النهائي */
+    .summary-table th {
+        background-color: #1E3A8A;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (المنطق المزدوج: تتابع + سنوات)</h2>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center;">نظام الفروقات (موظفين متعددين)</h1>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1️⃣ إدارة البيانات
+# إدارة حالة الموظفين
 # ---------------------------------------------------------
-if 'actions' not in st.session_state:
-    st.session_state.actions = []
+if 'employees' not in st.session_state:
+    st.session_state.employees = []
 
-def delete_action(index):
-    st.session_state.actions.pop(index)
+# دوال مساعدة
+def delete_employee(emp_id):
+    st.session_state.employees = [e for e in st.session_state.employees if e['id'] != emp_id]
+    st.rerun()
+
+def delete_action(emp_id, action_index):
+    for emp in st.session_state.employees:
+        if emp['id'] == emp_id:
+            emp['actions'].pop(action_index)
+            break
     st.rerun()
 
 # ---------------------------------------------------------
-# 2️⃣ واجهة الإدخال
+# الشريط الجانبي: إضافة موظف جديد
 # ---------------------------------------------------------
-with st.container():
-    st.markdown('<div class="no-print">', unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        emp_name = st.text_input("اسم الموظف", "")
-        base_sal = st.number_input("الراتب الاسمي القديم (بالآلاف)", value=0, step=1, format="%d") * 1000
-    with c2:
-        degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"], index=0)
-    
-    end_calc_date = st.date_input("تاريخ نهاية الاحتساب", value=date.today(), format="DD/MM/YYYY")
-    
-    st.divider()
-    
-    st.caption("أدخل الحركات بالتسلسل (علاوة سنوية، ترفيع وظيفي...):")
-    cc1, cc2, cc3 = st.columns([2, 2, 2])
-    with cc1:
-        new_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي"])
-    with cc2:
-        new_sal = st.number_input("الراتب الجديد (بالآلاف)", value=0, step=1, format="%d") * 1000
-    with cc3:
-        new_date = st.date_input("تاريخ الاستحقاق", value=None, format="DD/MM/YYYY")
-    
-    if st.button("➕ إضافة الحركة"):
-        if new_sal > 0 and new_date:
-            st.session_state.actions.append({"type": new_type, "salary": new_sal, "date": new_date})
-            st.session_state.actions = sorted(st.session_state.actions, key=lambda x: x['date'])
-            st.rerun()
-        else:
-            st.error("أدخل البيانات كاملة.")
-
-    if st.session_state.actions:
-        st.write("---")
-        for i, act in enumerate(st.session_state.actions):
-            c_show1, c_show2, c_show3, c_show4 = st.columns([0.5, 3, 2, 2])
-            with c_show1:
-                if st.button("❌", key=f"del_{i}"): delete_action(i)
-            with c_show2: st.write(f"**{act['type']}**")
-            with c_show3: st.write(f"{act['salary']:,}")
-            with c_show4: st.write(f"{act['date'].strftime('%d/%m/%Y')}")
-
-    if st.button("🔄 تصفير القائمة"):
-        st.session_state.actions = []
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+with st.sidebar:
+    st.header("➕ إضافة موظف جديد")
+    with st.form("new_employee_form"):
+        new_name = st.text_input("اسم الموظف", "")
+        new_school = st.text_input("المدرسة", "")
+        new_degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"], index=0)
+        new_base_sal = st.number_input("الراتب الاسمي القديم (بالآلاف)", value=0, step=1, format="%d") * 1000
+        new_end_date = st.date_input("تاريخ نهاية الاحتساب", value=date.today(), format="DD/MM/YYYY")
+        
+        if st.form_submit_button("إضافة الموظف"):
+            if new_name and new_school:
+                emp_id = str(uuid.uuid4())
+                st.session_state.employees.append({
+                    'id': emp_id,
+                    'name': new_name,
+                    'school': new_school,
+                    'degree': new_degree,
+                    'base_sal': new_base_sal,
+                    'end_date': new_end_date,
+                    'actions': []  # قائمة الحركات
+                })
+                st.rerun()
+            else:
+                st.error("الرجاء إدخال اسم الموظف والمدرسة")
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي
+# دوال الحساب (نفس المنطق السابق)
 # ---------------------------------------------------------
-
 def adjust_date(d):
     if d.day >= 25:
         next_month = d.replace(day=28) + timedelta(days=4)
@@ -153,106 +148,161 @@ def get_months(start, end):
         return 0
     return (end.year - adj_start.year) * 12 + (end.month - adj_start.month)
 
-rows = []
-total_nominal = 0
 rates = {"بكالوريوس": 0.45, "دبلوم": 0.55, "ماجستير": 0.75, "دكتوراه": 1.0, "اعدادية": 0.25, "متوسطة": 0.15}
-current_rate = rates.get(degree, 0)
 
-if st.session_state.actions:
+def calculate_employee(emp):
+    """تحسب النتائج لموظف معين وتعطي (rows, total_nominal, total_gen)"""
+    rows = []
+    total_nominal = 0
+    rate = rates.get(emp['degree'], 0)
+    
+    if not emp['actions']:
+        return rows, total_nominal, 0
+    
     cumulative_diff = 0
-    prev_salary = base_sal
+    prev_salary = emp['base_sal']
     prev_year = None
-
-    for i, curr in enumerate(st.session_state.actions):
-        base_diff = curr['salary'] - prev_salary
-
+    
+    for i, act in enumerate(emp['actions']):
+        base_diff = act['salary'] - prev_salary
+        
         if prev_year is None:
             is_new_year = False
         else:
-            is_new_year = (curr['date'].year > prev_year)
-
+            is_new_year = (act['date'].year > prev_year)
+        
         if is_new_year:
             effective_diff = base_diff + cumulative_diff
         else:
             effective_diff = base_diff
-
+        
         cumulative_diff += base_diff
-
-        if i < len(st.session_state.actions) - 1:
-            end_date = st.session_state.actions[i+1]['date']
+        
+        # تاريخ النهاية لهذه الحركة
+        if i < len(emp['actions']) - 1:
+            end_date = emp['actions'][i+1]['date']
         else:
-            end_date = end_calc_date
-
-        months = get_months(curr['date'], end_date)
-
+            end_date = emp['end_date']
+        
+        months = get_months(act['date'], end_date)
+        
         if months > 0:
             row_total = effective_diff * months
             total_nominal += row_total
-
             rows.append({
-                "ت": i + 1,
-                "نوع": curr['type'],
+                "ت": i+1,
+                "نوع": act['type'],
                 "أشهر": months,
                 "فرق": f"{effective_diff:,}",
                 "اسمي": f"{row_total:,}",
                 "ملاحظة": "سنة جديدة (بتراكم)" if is_new_year else "نفس السنة"
             })
-
-        prev_salary = curr['salary']
-        prev_year = curr['date'].year
+        
+        prev_salary = act['salary']
+        prev_year = act['date'].year
+    
+    total_gen = total_nominal * rate
+    return rows, total_nominal, total_gen
 
 # ---------------------------------------------------------
-# 4️⃣ طباعة التقرير
+# الصفحة الرئيسية
 # ---------------------------------------------------------
-if rows:
-    st.markdown(f"""
-    <div class="report-header">
-        <h3>المديرية العامة لتربية محافظة الديوانية / الشؤون المالية</h3>
-        <p>اسم الموظف: {emp_name if emp_name else '................'}</p>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th width="5%">ت</th><th width="25%">نوع الحركة</th><th width="10%">الأشهر</th>
-                <th width="15%">الفرق الشهري</th><th width="15%">الاسمي الكلي</th><th width="30%">الملاحظة</th>
-            </tr>
-        </thead>
-        <tbody>
-    """, unsafe_allow_html=True)
-    
-    for r in rows:
-        st.markdown(f"<tr><td>{r['ت']}</td><td>{r['نوع']}</td><td>{r['أشهر']}</td><td>{r['فرق']}</td><td>{r['اسمي']}</td><td>{r['ملاحظة']}</td></tr>", unsafe_allow_html=True)
-    
-    total_gen = total_nominal * current_rate
-    
-    # صفوف الإجمالي بتنسيق موحد
-    st.markdown(f"""
-        <tr class="total-row">
-            <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
-            <td>{total_nominal:,}</td><td>دينار</td>
-        </tr>
-        <tr class="total-row">
-            <td colspan="4" style="text-align:left; padding-left:15px;">المستحق الصافي ({int(current_rate*100)}%)</td>
-            <td>{total_gen:,}</td><td>دينار</td>
-        </tr>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-        </tbody>
-    </table>
-    <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
-        <div>منظم الجدول<br><br>__________</div>
-        <div>التدقيق<br><br>__________</div>
-        <div>مدير القسم<br><br>__________</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # زر الطباعة الفعّال
-    st.markdown("""
-    <div style="text-align:center; margin-top:20px;">
-        <button onclick="window.print()">🖨️ طباعة الكشف</button>
-    </div>
-    """, unsafe_allow_html=True)
-    
+if not st.session_state.employees:
+    st.info("👈 أضف موظفين من القائمة الجانبية")
 else:
-    st.info("أضف الحركات ليتم الاحتساب.")
+    # إنشاء تبويبات لكل موظف
+    tab_names = [f"{emp['name']} - {emp['school']}" for emp in st.session_state.employees]
+    tabs = st.tabs(tab_names)
+    
+    summary_data = []  # لتجميع بيانات الجدول النهائي
+    
+    for tab_idx, emp in enumerate(st.session_state.employees):
+        with tabs[tab_idx]:
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 0.5])
+            with col1: st.write(f"**الموظف:** {emp['name']}")
+            with col2: st.write(f"**المدرسة:** {emp['school']}")
+            with col3: st.write(f"**الشهادة:** {emp['degree']}")
+            with col4: st.write(f"**الراتب الأساسي:** {emp['base_sal']:,}")
+            with col5:
+                if st.button("🗑️ حذف", key=f"del_emp_{emp['id']}"):
+                    delete_employee(emp['id'])
+            
+            st.divider()
+            
+            # إدارة الحركات
+            st.subheader("الحركات الوظيفية")
+            
+            # نموذج إضافة حركة
+            with st.form(key=f"add_action_{emp['id']}"):
+                ca1, ca2, ca3 = st.columns(3)
+                with ca1:
+                    act_type = st.selectbox("النوع", ["علاوة سنوية", "ترفيع وظيفي"], key=f"type_{emp['id']}")
+                with ca2:
+                    act_sal = st.number_input("الراتب الجديد (بالآلاف)", value=0, step=1, format="%d", key=f"sal_{emp['id']}") * 1000
+                with ca3:
+                    act_date = st.date_input("التاريخ", value=None, format="DD/MM/YYYY", key=f"date_{emp['id']}")
+                
+                if st.form_submit_button("➕ إضافة حركة"):
+                    if act_sal > 0 and act_date:
+                        emp['actions'].append({"type": act_type, "salary": act_sal, "date": act_date})
+                        emp['actions'] = sorted(emp['actions'], key=lambda x: x['date'])
+                        st.rerun()
+                    else:
+                        st.error("أدخل جميع البيانات")
+            
+            # عرض الحركات الحالية
+            if emp['actions']:
+                st.write("---")
+                for i, act in enumerate(emp['actions']):
+                    cola, colb, colc, cold = st.columns([0.5, 2, 2, 2])
+                    with cola:
+                        if st.button("❌", key=f"del_act_{emp['id']}_{i}"):
+                            delete_action(emp['id'], i)
+                    with colb: st.write(f"**{act['type']}**")
+                    with colc: st.write(f"{act['salary']:,}")
+                    with cold: st.write(f"{act['date'].strftime('%d/%m/%Y')}")
+                
+                # حساب وعرض النتائج لهذا الموظف
+                rows, total_nominal, total_gen = calculate_employee(emp)
+                if rows:
+                    st.subheader("نتائج الحساب")
+                    # عرض جدول النتائج التفصيلية
+                    result_table = "<table><tr><th>ت</th><th>نوع</th><th>أشهر</th><th>الفرق</th><th>الاسمي</th><th>ملاحظة</th></tr>"
+                    for r in rows:
+                        result_table += f"<tr><td>{r['ت']}</td><td>{r['نوع']}</td><td>{r['أشهر']}</td><td>{r['فرق']}</td><td>{r['اسمي']}</td><td>{r['ملاحظة']}</td></tr>"
+                    result_table += f"<tr class='total-row'><td colspan='4' style='text-align:left'>المجموع الاسمي</td><td>{total_nominal:,}</td><td></td></tr>"
+                    result_table += f"<tr class='total-row'><td colspan='4' style='text-align:left'>المستحق الصافي ({int(rates[emp['degree']]*100)}%)</td><td>{total_gen:,}</td><td></td></tr>"
+                    result_table += "</table>"
+                    st.markdown(result_table, unsafe_allow_html=True)
+                    
+                    # تجميع بيانات الملخص
+                    summary_data.append({
+                        "الموظف": emp['name'],
+                        "المدرسة": emp['school'],
+                        "الشهادة": emp['degree'],
+                        "المجموع الاسمي": total_nominal,
+                        "المستحق الصافي": total_gen
+                    })
+            else:
+                st.info("لا توجد حركات بعد. أضف حركة.")
+    
+    # ---------------------------------------------------------
+    # الجدول النهائي (ملخص جميع الموظفين)
+    # ---------------------------------------------------------
+    if summary_data:
+        st.divider()
+        st.header("📊 النتائج النهائية لجميع الموظفين")
+        
+        # تحويل البيانات إلى جدول
+        summary_table = "<table class='summary-table'><tr><th>الموظف</th><th>المدرسة</th><th>الشهادة</th><th>المجموع الاسمي</th><th>المستحق الصافي</th></tr>"
+        for d in summary_data:
+            summary_table += f"<tr><td>{d['الموظف']}</td><td>{d['المدرسة']}</td><td>{d['الشهادة']}</td><td>{d['المجموع الاسمي']:,}</td><td>{d['المستحق الصافي']:,}</td></tr>"
+        summary_table += "</table>"
+        st.markdown(summary_table, unsafe_allow_html=True)
+        
+        # زر طباعة (للملخص)
+        st.markdown("""
+        <div style="text-align:center; margin-top:20px;">
+            <button onclick="window.print()">🖨️ طباعة الكشف النهائي</button>
+        </div>
+        """, unsafe_allow_html=True)
