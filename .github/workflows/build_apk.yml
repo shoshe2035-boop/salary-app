@@ -42,13 +42,17 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Create requirements file
+      - name: Pre-install certifi
         run: |
-          cp requirements-flet.txt requirements.txt.bak || true
-          echo "certifi" > /tmp/flet-req.txt
+          pip install certifi --target ./certifi_pkg --break-system-packages || true
+          pip install certifi --break-system-packages || true
 
       - name: Build APK
-        run: flet build apk --no-rich-output --dep-reqs /tmp/flet-req.txt
+        run: |
+          flet build apk \
+            --no-rich-output \
+            --template-ref main \
+            --source-packages certifi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
