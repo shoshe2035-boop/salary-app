@@ -32,7 +32,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.38.7'
           channel: 'stable'
 
       - name: Setup Android SDK
@@ -41,8 +41,19 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
+      - name: Set Flutter & Android paths for Flet
+        run: |
+          echo "FLUTTER_ROOT=$FLUTTER_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+
       - name: Build APK
-        run: flet build apk --no-rich-output
+        run: |
+          flet build apk --no-rich-output
+        env:
+          CI: true
+          FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
