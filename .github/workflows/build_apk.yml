@@ -42,8 +42,17 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
+      - name: Fix serious_python ref
+        run: |
+          mkdir -p ~/.flet/templates
+          cd ~/.flet/templates
+          git clone https://github.com/flet-dev/flet-build-template.git || true
+          cd flet-build-template
+          git fetch --all
+          git checkout main || git checkout master || true
+
       - name: Build APK
-        run: flet build apk --no-rich-output
+        run: flet build apk --no-rich-output --template ~/.flet/templates/flet-build-template
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
