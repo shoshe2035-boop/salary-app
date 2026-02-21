@@ -42,17 +42,13 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Pre-install certifi
+      - name: Upgrade serious_python
         run: |
-          pip install certifi --target ./certifi_pkg --break-system-packages || true
-          pip install certifi --break-system-packages || true
+          flutter pub global activate serious_python 0.8.7 || true
+          dart pub global activate serious_python 0.8.7 || true
 
       - name: Build APK
-        run: |
-          flet build apk \
-            --no-rich-output \
-            --template-ref main \
-            --source-packages certifi
+        run: flet build apk --no-rich-output
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
