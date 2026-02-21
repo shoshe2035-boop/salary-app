@@ -1,3 +1,6 @@
+import subprocess, sys
+subprocess.run([sys.executable, "-m", "pip", "install", "certifi"], capture_output=True)
+
 import flet as ft
 from datetime import date, timedelta
 import uuid
