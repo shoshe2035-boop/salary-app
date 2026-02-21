@@ -18,8 +18,9 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Flet
+     - name: Install Flet
         run: |
+          pip install certifi
           pip install flet==0.80.5
           pip install flet-cli==0.80.5
 
