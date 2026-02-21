@@ -42,8 +42,13 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
+      - name: Create requirements file
+        run: |
+          cp requirements-flet.txt requirements.txt.bak || true
+          echo "certifi" > /tmp/flet-req.txt
+
       - name: Build APK
-        run: flet build apk --no-rich-output -r requirements-flet.txt
+        run: flet build apk --no-rich-output --dep-reqs /tmp/flet-req.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
