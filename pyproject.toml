@@ -1,0 +1,8 @@
+[tool.flet]
+org = "com.myapp"
+
+[tool.flet.app]
+module_name = "main"
+
+[tool.flet.android]
+additional_dependencies = ["certifi"]
