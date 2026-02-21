@@ -16,13 +16,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install flet==0.27.6
-          python -m pip install flet-cli==0.27.6
+          python -m pip install flet==0.80.5
+          python -m pip install flet-cli==0.80.5
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.4'
+          flutter-version: '3.38.7'
           channel: 'stable'
 
       - name: Setup Android SDK
@@ -42,17 +42,8 @@ jobs:
       - name: Accept Android Licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Fix serious_python ref
-        run: |
-          mkdir -p ~/.flet/templates
-          cd ~/.flet/templates
-          git clone https://github.com/flet-dev/flet-build-template.git || true
-          cd flet-build-template
-          git fetch --all
-          git checkout main || git checkout master || true
-
       - name: Build APK
-        run: flet build apk --no-rich-output --template ~/.flet/templates/flet-build-template
+        run: flet build apk --no-rich-output --requirements certifi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
