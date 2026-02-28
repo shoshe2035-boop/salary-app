@@ -11,7 +11,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    html, body, .main {
+    html, body, .main, .stApp {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
@@ -37,6 +37,7 @@ st.markdown("""
         border: 1px solid #000000 !important;
         padding: 8px;
         text-align: center !important;
+        color: #000000 !important;
     }
     
     th {
@@ -73,13 +74,31 @@ st.markdown("""
         color: white !important;
         border-color: #000000 !important;
     }
+    
+    @media print {
+        .no-print, [data-testid="stSidebar"] { display: none !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام الفروقات (المنطق المزدوج: تتابع + سنوات)</h2>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1️⃣ إدارة البيانات
+# 1️⃣ القائمة الجانبية (إعدادات الاحتساب)
+# ---------------------------------------------------------
+with st.sidebar:
+    st.markdown("### ⚙️ إعدادات الاحتساب")
+    calc_mode = st.radio(
+        "اختر طريقة مضاعفة الفروقات:",
+        options=[
+            "المضاعفة في سنة جديدة فقط (الوضع الحالي)",
+            "المضاعفة دائماً (في نفس السنة أو غيرها)"
+        ]
+    )
+    st.info("تغيير هذا الخيار سيقوم بإعادة حساب الجدول تلقائياً بناءً على اختيارك.")
+
+# ---------------------------------------------------------
+# 2️⃣ إدارة البيانات
 # ---------------------------------------------------------
 if 'actions' not in st.session_state:
     st.session_state.actions = []
@@ -89,7 +108,7 @@ def delete_action(index):
     st.rerun()
 
 # ---------------------------------------------------------
-# 2️⃣ واجهة الإدخال
+# 3️⃣ واجهة الإدخال
 # ---------------------------------------------------------
 with st.container():
     st.markdown('<div class="no-print">', unsafe_allow_html=True)
@@ -138,7 +157,7 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي
+# 4️⃣ المنطق الحسابي (مع تضمين خيار المضاعفة)
 # ---------------------------------------------------------
 
 def adjust_date(d):
@@ -166,18 +185,29 @@ if st.session_state.actions:
     for i, curr in enumerate(st.session_state.actions):
         base_diff = curr['salary'] - prev_salary
 
+        # تطبيق المنطق المختار من القائمة الجانبية
         if prev_year is None:
-            is_new_year = False
+            # الحركة الأولى دائماً تأخذ الفرق المباشر بدون تراكم سابق
+            effective_diff = base_diff
+            note_text = "حركة أولى"
         else:
             is_new_year = (curr['date'].year > prev_year)
+            
+            if calc_mode == "المضاعفة دائماً (في نفس السنة أو غيرها)":
+                effective_diff = base_diff + cumulative_diff
+                note_text = "مضاعفة مستمرة"
+            else:
+                if is_new_year:
+                    effective_diff = base_diff + cumulative_diff
+                    note_text = "سنة جديدة (بتراكم)"
+                else:
+                    effective_diff = base_diff
+                    note_text = "نفس السنة (بدون تراكم)"
 
-        if is_new_year:
-            effective_diff = base_diff + cumulative_diff
-        else:
-            effective_diff = base_diff
-
+        # إضافة الفرق الأساسي إلى التراكمي للحركات القادمة
         cumulative_diff += base_diff
 
+        # حساب الأشهر
         if i < len(st.session_state.actions) - 1:
             end_date = st.session_state.actions[i+1]['date']
         else:
@@ -195,20 +225,26 @@ if st.session_state.actions:
                 "أشهر": months,
                 "فرق": f"{effective_diff:,}",
                 "اسمي": f"{row_total:,}",
-                "ملاحظة": "سنة جديدة (بتراكم)" if is_new_year else "نفس السنة"
+                "ملاحظة": note_text
             })
 
         prev_salary = curr['salary']
         prev_year = curr['date'].year
 
 # ---------------------------------------------------------
-# 4️⃣ طباعة التقرير
+# 5️⃣ بناء وطباعة التقرير (HTML صافي لتجنب الأخطاء)
 # ---------------------------------------------------------
 if rows:
-    st.markdown(f"""
+    table_rows_html = ""
+    for r in rows:
+        table_rows_html += f"<tr><td>{r['ت']}</td><td>{r['نوع']}</td><td>{r['أشهر']}</td><td>{r['فرق']}</td><td>{r['اسمي']}</td><td>{r['ملاحظة']}</td></tr>"
+        
+    total_gen = total_nominal * current_rate
+    
+    final_report_html = f"""
     <div class="report-header">
-        <h3>المديرية العامة لتربية محافظة الديوانية / الشؤون المالية</h3>
-        <p>اسم الموظف: {emp_name if emp_name else '................'}</p>
+        <h3 style="color:black;">المديرية العامة لتربية محافظة الديوانية / الشؤون المالية</h3>
+        <p style="color:black;">اسم الموظف: {emp_name if emp_name else '................'}</p>
     </div>
     <table>
         <thead>
@@ -218,39 +254,30 @@ if rows:
             </tr>
         </thead>
         <tbody>
-    """, unsafe_allow_html=True)
-    
-    for r in rows:
-        st.markdown(f"<tr><td>{r['ت']}</td><td>{r['نوع']}</td><td>{r['أشهر']}</td><td>{r['فرق']}</td><td>{r['اسمي']}</td><td>{r['ملاحظة']}</td></tr>", unsafe_allow_html=True)
-    
-    total_gen = total_nominal * current_rate
-    
-    # صفوف الإجمالي بتنسيق موحد
-    st.markdown(f"""
-        <tr class="total-row">
-            <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
-            <td>{total_nominal:,}</td><td>دينار</td>
-        </tr>
-        <tr class="total-row">
-            <td colspan="4" style="text-align:left; padding-left:15px;">المستحق الصافي ({int(current_rate*100)}%)</td>
-            <td>{total_gen:,}</td><td>دينار</td>
-        </tr>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
+            {table_rows_html}
+            <tr class="total-row">
+                <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
+                <td>{total_nominal:,}</td><td>دينار</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="4" style="text-align:left; padding-left:15px;">المستحق الصافي ({int(current_rate*100)}%)</td>
+                <td>{total_gen:,}</td><td>دينار</td>
+            </tr>
         </tbody>
     </table>
-    <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
+    <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold; color:black;">
         <div>منظم الجدول<br><br>__________</div>
         <div>التدقيق<br><br>__________</div>
         <div>مدير القسم<br><br>__________</div>
     </div>
-    """, unsafe_allow_html=True)
+    """
     
-    # زر الطباعة الفعّال
+    # دمج وعرض الـ HTML كقطعة واحدة نظيفة
+    st.markdown(final_report_html.replace("\n", ""), unsafe_allow_html=True)
+    
     st.markdown("""
-    <div style="text-align:center; margin-top:20px;">
-        <button onclick="window.print()">🖨️ طباعة الكشف</button>
+    <div class="no-print" style="text-align:center; margin-top:20px;">
+        <button onclick="window.print()" style="font-size:16px;">🖨️ طباعة الكشف</button>
     </div>
     """, unsafe_allow_html=True)
     
