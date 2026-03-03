@@ -6,55 +6,61 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات - مصطفى حسن", layout="centered")
 
-# CSS دقيق لفصل الألوان (الخلفية بيضاء، السايدبار أسود، المدخلات سوداء)
+# CSS شامل لإعادة الاسم وضبط الاتجاه والألوان
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    /* 1. إجبار خلفية التطبيق الرئيسية على اللون الأبيض */
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #ffffff !important;
+    /* 1. ضبط اتجاه الصفحة بالكامل من اليمين لليسار */
+    html, body, .stApp, [data-testid="stAppViewContainer"] {
+        direction: rtl !important;
+        text-align: right !important;
+        background-color: #ffffff !important; /* الخلفية الرئيسية بيضاء */
+        font-family: 'Cairo', sans-serif !important;
     }
 
     /* 2. القائمة الجانبية: سوداء بالكامل مع نص أبيض */
     [data-testid="stSidebar"] {
         background-color: #000000 !important;
+        direction: rtl !important;
     }
     [data-testid="stSidebar"] * {
         color: #ffffff !important;
+        text-align: right !important;
     }
 
     /* 3. صناديق الإدخال والقوائم: خلفية سوداء ونص أبيض */
     div[data-baseweb="input"], div[data-baseweb="select"], .stSelectbox div, .stNumberInput input, .stTextInput input {
         background-color: #000000 !important;
         color: #ffffff !important;
+        text-align: right !important;
+        direction: rtl !important;
     }
     
-    /* لون النص التوضيحي داخل الصناديق */
-    input::placeholder { color: #aaaaaa !important; }
-
-    /* 4. عناوين الحقول (Labels) خارج الصناديق: سوداء لتظهر على الخلفية البيضاء */
+    /* 4. العناوين (Labels) فوق الصناديق: سوداء لتظهر بوضوح */
     label p {
         color: #000000 !important;
         font-weight: bold;
         font-size: 16px;
+        text-align: right !important;
     }
 
-    /* 5. التقرير (الورقة A4): خلفية بيضاء ونص أسود ثابت */
+    /* 5. التقرير (A4): خلفية بيضاء ونصوص سوداء فاحمة */
     .printable-report {
         background-color: #ffffff !important;
         color: #000000 !important;
-        padding: 25px;
+        padding: 30px;
         border: 2px solid #000000;
         margin-top: 20px;
-        direction: rtl;
+        direction: rtl !important;
+        text-align: right !important;
     }
     
     .printable-report h3, .printable-report p, .printable-report span {
         color: #000000 !important;
     }
 
-    /* 6. جداول التقرير */
+    /* 6. الجداول بحدود سوداء واضحة */
     .report-table {
         width: 100%;
         border-collapse: collapse;
@@ -62,17 +68,15 @@ st.markdown("""
     }
     .report-table th, .report-table td {
         border: 1px solid #000000 !important;
-        padding: 8px;
+        padding: 10px;
         text-align: center !important;
         color: #000000 !important;
-        background-color: #ffffff !important;
     }
     .report-table th {
         background-color: #eeeeee !important;
-        font-weight: bold;
     }
 
-    /* 7. إعدادات الطباعة */
+    /* 7. إعدادات الطباعة النهائية */
     @media print {
         @page { size: A4; margin: 10mm; }
         .no-print, [data-testid="stSidebar"], [data-testid="stHeader"], .stButton {
@@ -85,41 +89,38 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1️⃣ القائمة الجانبية (الافتراضي: المضاعفة دائماً)
+# 1️⃣ القائمة الجانبية (مصطفى حسن - إعدادات الحساب)
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### ⚙️ إعدادات الحساب")
     calc_mode = st.radio(
-        "طريقة الاحتساب:",
+        "طريقة الاحتساب المعتمدة:",
         options=["المضاعفة في سنة جديدة فقط", "المضاعفة دائماً (تراكم مستمر)"],
-        index=1  # المضاعفة دائماً هي الافتراضية
+        index=1  # الافتراضي: المضاعفة دائماً
     )
     st.write("---")
-    st.info("الخلفية بيضاء للتقرير وسوداء للمدخلات.")
+    st.markdown("**المبرمج المستشار:** مصطفى حسن")
 
 # ---------------------------------------------------------
-# 2️⃣ واجهة الإدخال
+# 2️⃣ واجهة الإدخال الرئيسية
 # ---------------------------------------------------------
 st.markdown('<div class="no-print">', unsafe_allow_html=True)
-st.markdown('<h2 style="text-align:center; color:#1E3A8A;">نظام احتساب الفروقات</h2>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; color:#1E3A8A;">نظام الفروقات - مصطفى حسن</h1>', unsafe_allow_html=True)
 
 if 'actions' not in st.session_state:
     st.session_state.actions = []
 
-def delete_action(index):
-    st.session_state.actions.pop(index); st.rerun()
-
 with st.container():
     c1, c2 = st.columns(2)
     with c1:
-        emp_name = st.text_input("اسم الموظف", placeholder="أدخل الاسم هنا...")
+        emp_name = st.text_input("اسم الموظف", placeholder="أدخل اسم الموظف الموقر")
         base_sal = st.number_input("الراتب الاسمي القديم (بالآلاف)", value=0) * 1000
     with c2:
         degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"])
         end_date = st.date_input("تاريخ نهاية الاحتساب", value=date.today())
 
     st.write("---")
-    st.markdown("<h5 style='color:black;'>➕ إضافة حركة استحقاق:</h5>", unsafe_allow_html=True)
+    st.markdown("<h5 style='color:black;'>➕ إضافة تفاصيل الحركة:</h5>", unsafe_allow_html=True)
     cc1, cc2, cc3 = st.columns([2, 2, 2])
     with cc1: n_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي"])
     with cc2: n_sal = st.number_input("الراتب الجديد (بالآلاف)", value=0) * 1000
@@ -132,12 +133,12 @@ with st.container():
             st.rerun()
 
     if st.session_state.actions:
-        if st.button("🗑️ مسح الكل"):
+        if st.button("🗑️ مسح وإعادة تصفير"):
             st.session_state.actions = []; st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3️⃣ المنطق الحسابي
+# 3️⃣ المنطق الحسابي (تراكمي - مصطفى حسن)
 # ---------------------------------------------------------
 def adjust_date(d):
     return d.replace(day=1) + timedelta(days=31) if d.day >= 25 else d
@@ -161,7 +162,7 @@ if st.session_state.actions:
         b_diff = curr['salary'] - p_sal
         
         if p_year is None:
-            eff_diff = b_diff; note = "بداية"
+            eff_diff = b_diff; note = "بداية الاحتساب"
         else:
             is_new_year = (curr['date'].year > p_year)
             if calc_mode == "المضاعفة دائماً (تراكم مستمر)" or is_new_year:
@@ -182,7 +183,7 @@ if st.session_state.actions:
         p_sal = curr['salary']; p_year = curr['date'].year
 
 # ---------------------------------------------------------
-# 4️⃣ عرض التقرير
+# 4️⃣ التقرير النهائي (مصطفى حسن - نسخة الطباعة)
 # ---------------------------------------------------------
 if st.session_state.actions:
     total_net = total_nominal * current_rate
@@ -190,7 +191,7 @@ if st.session_state.actions:
     <div class="printable-report">
         <div style="text-align: center; border: 2px solid black; padding: 10px; margin-bottom: 20px;">
             <h3 style="margin:0;">المديرية العامة لتربية محافظة الديوانية</h3>
-            <p style="margin:5px;">كشف فروقات الرواتب - شعبة حسابات الثانوي</p>
+            <p style="margin:5px;">كشف فروقات الرواتب - م. مصطفى حسن</p>
         </div>
         <div style="display:flex; justify-content:space-between; margin-bottom: 10px; font-weight:bold;">
             <span>اسم الموظف: {emp_name if emp_name else '................'}</span>
@@ -199,30 +200,30 @@ if st.session_state.actions:
         <table class="report-table">
             <thead>
                 <tr>
-                    <th>ت</th><th>نوع الحركة</th><th>شهر</th><th>الفرق</th><th>الاسمي</th><th>ملاحظة</th>
+                    <th>ت</th><th>نوع الحركة</th><th>أشهر</th><th>الفرق الشهري</th><th>الاسمي الكلي</th><th>الملاحظة</th>
                 </tr>
             </thead>
             <tbody>
                 {rows_html}
                 <tr style="background-color: #f0f0f0 !important; font-weight:bold;">
-                    <td colspan="4" style="text-align:left;">مجموع الفرق الاسمي</td>
+                    <td colspan="4" style="text-align:left; padding-left:10px;">مجموع الفرق الاسمي</td>
                     <td colspan="2">{total_nominal:,} د.ع</td>
                 </tr>
                 <tr style="background-color: #e0e0e0 !important; font-weight:bold;">
-                    <td colspan="4" style="text-align:left;">الصافي المستحق</td>
+                    <td colspan="4" style="text-align:left; padding-left:10px;">المستحق الصافي للقبض</td>
                     <td colspan="2">{total_net:,.0f} د.ع</td>
                 </tr>
             </tbody>
         </table>
-        <div style="margin-top:60px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
+        <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
             <div>منظم الجدول<br><br>__________</div>
             <div>التدقيق<br><br>__________</div>
             <div>مدير القسم<br><br>__________</div>
         </div>
     </div>
     <div class="no-print" style="text-align:center; margin-top:30px;">
-        <button onclick="window.print()" style="padding:15px 45px; font-size:18px; background-color:#1E3A8A; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
-            🖨️ طباعة التقرير (A4)
+        <button onclick="window.print()" style="padding:15px 50px; font-size:20px; background-color:#1E3A8A; color:white; border:none; border-radius:12px; cursor:pointer;">
+            🖨️ طباعة التقرير النهائي (A4)
         </button>
     </div>
     """
