@@ -4,118 +4,94 @@ from datetime import date, timedelta
 # ---------------------------------------------------------
 # إعدادات الصفحة
 # ---------------------------------------------------------
-st.set_page_config(page_title="نظام الفروقات - النسخة الاحترافية", layout="centered")
+st.set_page_config(page_title="نظام الفروقات - مصطفى حسن", layout="centered")
 
-# CSS قوي جداً لإجبار الألوان ومنع اختفاء النصوص
+# CSS لتخصيص الواجهة (القوائم سوداء) والتقرير (أبيض للطباعة)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
     
-    /* 1. إجبار اللون الأسود والخلفية البيضاء على كل شيء في التطبيق */
-    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: white !important;
-        color: black !important;
-        font-family: 'Cairo', sans-serif !important;
+    /* 1. إعدادات الخط العام */
+    * { font-family: 'Cairo', sans-serif !important; }
+
+    /* 2. تخصيص القائمة الجانبية (خلفية سوداء) */
+    [data-testid="stSidebar"] {
+        background-color: #000000 !important;
+        color: white !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: white !important;
     }
 
-    /* إجبار لون النصوص في جميع أنواع العناصر */
-    h1, h2, h3, h4, h5, h6, p, span, div, label, td, th {
-        color: black !important;
+    /* 3. تخصيص حقول الإدخال والقوائم المنسدلة (خلفية سوداء) */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stNumberInput>div>div>input {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+        border: 1px solid #444 !important;
     }
+    
+    label { color: #000000 !important; font-weight: bold; } /* عناوين الحقول بالأسود لتظهر على الخلفية البيضاء للتطبيق */
 
-    /* 2. تنسيق منطقة الإدخال (تظهر بشكل خفيف في الشاشة فقط) */
-    .no-print {
-        background-color: #f9f9f9 !important;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #ddd !important;
-        margin-bottom: 20px;
-    }
-
-    /* 3. تنسيق التقرير كأنه ورقة A4 حقيقية */
+    /* 4. تنسيق التقرير (أبيض ثابت للطباعة) */
     .printable-report {
         background-color: white !important;
         color: black !important;
-        width: 100%;
-        max-width: 800px;
-        margin: 0 auto;
         padding: 20px;
-        border: 1px solid #000; /* إطار خفيف للعرض */
+        border: 2px solid black;
+        margin-top: 20px;
     }
-
-    /* 4. جداول احترافية بحدود سوداء واضحة */
     .report-table {
         width: 100%;
-        border-collapse: collapse !important;
-        margin-top: 15px;
+        border-collapse: collapse;
+        color: black !important;
     }
     .report-table th, .report-table td {
         border: 1px solid black !important;
-        padding: 10px !important;
+        padding: 8px;
         text-align: center !important;
         color: black !important;
-        background-color: white !important;
     }
-    .report-table th {
-        background-color: #f0f0f0 !important;
-        font-weight: bold;
-    }
+    .report-table th { background-color: #f0f0f0 !important; }
 
-    /* 5. إعدادات الطباعة لورق A4 */
+    /* 5. إعدادات الطباعة A4 */
     @media print {
-        @page {
-            size: A4;
-            margin: 10mm;
-        }
-        /* إخفاء كل شيء عدا التقرير */
-        .no-print, [data-testid="stSidebar"], [data-testid="stHeader"], .stButton, footer {
+        @page { size: A4; margin: 10mm; }
+        .no-print, [data-testid="stSidebar"], [data-testid="stHeader"], .stButton {
             display: none !important;
         }
-        .printable-report {
-            border: none !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .stApp {
-            background-color: white !important;
-        }
-        * {
-            color: black !important;
-            -webkit-print-color-adjust: exact !important; /* لضمان ظهور الألوان الخفيفة */
-        }
+        .printable-report { border: none !important; width: 100% !important; }
+        body, .stApp { background-color: white !important; }
+        * { color: black !important; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 1️⃣ القائمة الجانبية (Sidebar)
+# 1️⃣ القائمة الجانبية (الافتراضي: المضاعفة دائماً)
 # ---------------------------------------------------------
 with st.sidebar:
-    st.markdown("### ⚙️ خيارات الحساب")
+    st.markdown("### ⚙️ إعدادات الحساب")
     calc_mode = st.radio(
         "اختر طريقة المضاعفة:",
-        options=["المضاعفة في سنة جديدة فقط", "المضاعفة دائماً (تراكم مستمر)"]
+        options=["المضاعفة في سنة جديدة فقط", "المضاعفة دائماً (تراكم مستمر)"],
+        index=1  # جعل الخيار الثاني هو الافتراضي
     )
     st.write("---")
-    st.caption("برمجة وتطوير: مصطفى حسن")
+    st.write("تم ضبط 'المضاعفة دائماً' كخيار افتراضي بناءً على طلبك.")
 
 # ---------------------------------------------------------
-# 2️⃣ واجهة الإدخال (تختفي عند الطباعة)
+# 2️⃣ إدارة البيانات والواجهة
 # ---------------------------------------------------------
-st.markdown('<div class="no-print">', unsafe_allow_html=True)
-st.markdown('<h2 style="text-align:center;">نظام احتساب الفروقات</h2>', unsafe_allow_html=True)
-
 if 'actions' not in st.session_state:
     st.session_state.actions = []
 
-def delete_action(index):
-    st.session_state.actions.pop(index); st.rerun()
+st.markdown('<div class="no-print">', unsafe_allow_html=True)
+st.markdown('<h2 style="text-align:center; color:#000;">نظام احتساب الفروقات</h2>', unsafe_allow_html=True)
 
 with st.container():
     c1, c2 = st.columns(2)
     with c1:
-        emp_name = st.text_input("اسم الموظف الموقر", "")
+        emp_name = st.text_input("اسم الموظف", "")
         base_sal = st.number_input("الراتب الاسمي القديم (بالآلاف)", value=0) * 1000
     with c2:
         degree = st.selectbox("التحصيل العلمي", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"])
@@ -134,7 +110,7 @@ with st.container():
             st.rerun()
 
     if st.session_state.actions:
-        if st.button("🗑️ مسح كل البيانات"):
+        if st.button("🗑️ مسح البيانات"):
             st.session_state.actions = []; st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -166,6 +142,7 @@ if st.session_state.actions:
             eff_diff = b_diff; note = "بداية"
         else:
             is_new_year = (curr['date'].year > p_year)
+            # تطبيق وضع الحساب المختار
             if calc_mode == "المضاعفة دائماً (تراكم مستمر)" or is_new_year:
                 eff_diff = b_diff + cum_diff; note = "تراكمي"
             else:
@@ -174,7 +151,7 @@ if st.session_state.actions:
         cum_diff += b_diff
         e_date = st.session_state.actions[i+1]['date'] if i < len(st.session_state.actions)-1 else end_date
         months = get_months(curr['date'], e_date)
-        if i == len(st.session_state.actions)-1: months += 1 # إضافة شهر النهاية
+        if i == len(st.session_state.actions)-1: months += 1
 
         if months > 0:
             sub_total = eff_diff * months
@@ -184,60 +161,48 @@ if st.session_state.actions:
         p_sal = curr['salary']; p_year = curr['date'].year
 
 # ---------------------------------------------------------
-# 4️⃣ عرض التقرير النهائي (A4)
+# 4️⃣ التقرير المطبوع (أبيض/أسود ثابت)
 # ---------------------------------------------------------
 if st.session_state.actions:
     total_net = total_nominal * current_rate
-    
     report_content = f"""
     <div class="printable-report">
         <div style="text-align: center; border: 2px solid black; padding: 10px; margin-bottom: 20px;">
-            <h3 style="margin:0;">المديرية العامة لتربية محافظة الديوانية</h3>
-            <p style="margin:5px;">كشف فروقات الرواتب - شعبة حسابات الثانوي</p>
+            <h3 style="margin:0; color:black;">المديرية العامة لتربية محافظة الديوانية</h3>
+            <p style="margin:5px; color:black;">كشف فروقات الرواتب - شعبة حسابات الثانوي</p>
         </div>
-        
-        <div style="display:flex; justify-content:space-between; margin-bottom: 10px; font-weight:bold; border-bottom: 1px solid black; padding-bottom: 5px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 10px; font-weight:bold; color:black;">
             <span>اسم الموظف: {emp_name if emp_name else '................'}</span>
             <span>الشهادة: {degree} ({int(current_rate*100)}%)</span>
         </div>
-
         <table class="report-table">
             <thead>
                 <tr>
-                    <th width="5%">ت</th>
-                    <th width="30%">نوع الحركة</th>
-                    <th width="10%">أشهر</th>
-                    <th width="15%">الفرق</th>
-                    <th width="15%">الاسمي</th>
-                    <th width="25%">ملاحظة</th>
+                    <th>ت</th><th>نوع الحركة</th><th>أشهر</th><th>الفرق</th><th>الاسمي</th><th>ملاحظة</th>
                 </tr>
             </thead>
             <tbody>
                 {rows_html}
                 <tr style="background-color: #f0f0f0 !important; font-weight:bold;">
                     <td colspan="4" style="text-align:left;">مجموع الفرق الاسمي</td>
-                    <td colspan="2">{total_nominal:,} دينار</td>
+                    <td colspan="2" style="color:black;">{total_nominal:,} دينار</td>
                 </tr>
                 <tr style="background-color: #e0e0e0 !important; font-weight:bold;">
                     <td colspan="4" style="text-align:left;">الصافي المستحق</td>
-                    <td colspan="2">{total_net:,.0f} دينار</td>
+                    <td colspan="2" style="color:black;">{total_net:,.0f} دينار</td>
                 </tr>
             </tbody>
         </table>
-
-        <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold;">
+        <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold; color:black;">
             <div>منظم الجدول<br><br>__________</div>
             <div>التدقيق<br><br>__________</div>
             <div>مدير القسم<br><br>__________</div>
         </div>
     </div>
-
     <div class="no-print" style="text-align:center; margin-top:30px;">
-        <button onclick="window.print()" style="padding:15px 40px; font-size:20px; background-color:#28a745; color:white; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">
+        <button onclick="window.print()" style="padding:15px 40px; font-size:18px; background-color:#28a745; color:white; border:none; border-radius:10px; cursor:pointer;">
             🖨️ طباعة الكشف (A4)
         </button>
     </div>
     """
     st.markdown(report_content.replace('\n', ''), unsafe_allow_html=True)
-else:
-    st.info("الرجاء إضافة حركات للبدء.")
