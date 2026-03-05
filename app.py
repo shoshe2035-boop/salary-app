@@ -2,11 +2,11 @@ import streamlit as st
 from datetime import date, timedelta
 
 # ---------------------------------------------------------
-# إعدادات الصفحة والبراندينج
+# إعدادات الصفحة والبراندينج (مصطفى حسن)
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام فروقات الموظفين - مصطفى حسن", layout="wide")
 
-# CSS متقدم للتعامل مع القائمة الجماعية وطباعة A4
+# CSS متطور لضبط الاتجاه (RTL) والألوان والطباعة A4
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -27,45 +27,48 @@ st.markdown("""
         background-color: #000000 !important;
         color: #ffffff !important;
         direction: rtl !important;
+        text-align: right !important;
     }
     label p { color: #000000 !important; font-weight: bold; }
 
-    /* تنسيق كشف الموظف للطباعة */
+    /* تنسيق كشف الموظف للطباعة A4 */
     .employee-card {
         background-color: white !important;
         color: black !important;
-        padding: 20px;
+        padding: 30px;
         border: 2px solid black;
-        margin-bottom: 30px;
-        page-break-after: always; /* كل موظف في صفحة جديدة عند الطباعة */
+        margin-bottom: 40px;
+        page-break-after: always; /* كل موظف في صفحة منفصلة */
+        direction: rtl !important;
     }
 
     .report-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 10px;
+        margin-top: 15px;
     }
     .report-table th, .report-table td {
         border: 1px solid black !important;
-        padding: 8px;
+        padding: 10px;
         text-align: center !important;
         color: black !important;
+        font-size: 14px;
     }
-    .report-table th { background-color: #f0f0f0 !important; }
+    .report-table th { background-color: #f0f0f0 !important; font-weight: bold; }
 
-    /* إعدادات الطباعة A4 */
+    /* إعدادات الطباعة */
     @media print {
         .no-print, [data-testid="stSidebar"], [data-testid="stHeader"], button {
             display: none !important;
         }
-        .employee-card { border: 1px solid black !important; margin: 0; }
+        .employee-card { border: 1px solid black !important; margin: 0; padding: 10mm; }
         body { background-color: white !important; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# إدارة مخزن البيانات
+# إدارة البيانات (Session State)
 # ---------------------------------------------------------
 if 'all_employees' not in st.session_state:
     st.session_state.all_employees = []
@@ -73,15 +76,15 @@ if 'temp_actions' not in st.session_state:
     st.session_state.temp_actions = []
 
 # ---------------------------------------------------------
-# القائمة الجانبية (الإعدادات)
+# القائمة الجانبية
 # ---------------------------------------------------------
 with st.sidebar:
-    st.header("👤 إدارة النظام")
+    st.header("👤 خيارات النظام")
     calc_mode = st.radio("وضع الاحتساب الافتراضي:", 
-                        ["المضاعفة في سنة جديدة", "المضاعفة دائماً (تراكمي)"], index=1)
+                        ["المضاعفة في سنة جديدة فقط", "المضاعفة دائماً (تراكم مستمر)"], index=1)
     
     st.write("---")
-    if st.button("🗑️ مسح قائمة الموظفين بالكامل"):
+    if st.button("🗑️ مسح القائمة بالكامل"):
         st.session_state.all_employees = []
         st.rerun()
     
@@ -89,49 +92,57 @@ with st.sidebar:
     st.markdown("👨‍💻 **المبرمج:** مصطفى حسن")
 
 # ---------------------------------------------------------
-# واجهة الإدخال (إضافة موظف جديد)
+# واجهة إدخال الموظفين (RTL)
 # ---------------------------------------------------------
 st.markdown('<h1 class="no-print" style="text-align:center; color:#1E3A8A;">نظام الفروقات الجماعي - مصطفى حسن</h1>', unsafe_allow_html=True)
 
-with st.expander("➕ إضافة موظف جديد للقائمة", expanded=True):
+with st.expander("➕ إضافة موظف جديد وحركاته", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
-        name = st.text_input("اسم الموظف")
-        b_sal = st.number_input("الراتب الاسمي القديم", value=0, step=250)
+        name = st.text_input("اسم الموظف الموقر")
+        b_sal = st.number_input("الاسم القديم (بالآلاف)", value=0, step=250) * 1000
     with col2:
         deg = st.selectbox("الشهادة", ["بكالوريوس", "دبلوم", "ماجستير", "دكتوراه", "اعدادية", "متوسطة"])
-        e_date = st.date_input("تاريخ نهاية الاحتساب", value=date.today())
+        e_date = st.date_input("تاريخ غلق الاحتساب", value=date.today())
 
     st.markdown("---")
-    st.subheader("📋 حركات الموظف (علاوات/ترفييع)")
-    ac1, ac2, ac3 = st.columns([2, 2, 2])
-    with ac1: a_type = st.selectbox("نوع الحركة", ["علاوة سنوية", "ترفيع وظيفي"])
-    with ac2: a_sal = st.number_input("الراتب الجديد", value=0, step=250)
-    with ac3: a_date = st.date_input("تاريخ الاستحقاق", value=None)
+    st.subheader("📋 تفاصيل العلاوات والترفييع")
+    # تقسيم السطر لـ 4 أعمدة لإضافة "رقم الأمر"
+    ac1, ac2, ac3, ac4 = st.columns([2, 2, 2, 2])
+    with ac1: a_type = st.selectbox("النوع", ["علاوة سنوية", "ترفيع وظيفي"])
+    with ac2: a_sal = st.number_input("الراتب الجديد (بالآلاف)", value=0, step=250) * 1000
+    with ac3: a_date = st.date_input("التاريخ", value=None)
+    with ac4: a_order = st.text_input("رقم الأمر (اختياري)")
 
-    if st.button("➕ إضافة هذه الحركة للموظف"):
+    if st.button("➕ إضافة الحركة الحالية للموظف"):
         if a_sal > 0 and a_date:
-            st.session_state.temp_actions.append({"type": a_type, "salary": a_sal, "date": a_date})
+            st.session_state.temp_actions.append({
+                "type": a_type, 
+                "salary": a_sal, 
+                "date": a_date,
+                "order_no": a_order if a_order else "---"
+            })
             st.session_state.temp_actions = sorted(st.session_state.temp_actions, key=lambda x: x['date'])
     
-    # عرض الحركات المضافة حالياً للموظف قبل حفظه
+    # عرض الجدول المؤقت للموظف الحالي
     if st.session_state.temp_actions:
+        st.markdown("**الحركات المضافة لهذا الموظف:**")
         st.table(st.session_state.temp_actions)
-        if st.button("💾 حفظ الموظف وحركاته في القائمة"):
+        
+        if st.button("💾 حفظ هذا الموظف نهائياً في القائمة الجماعية"):
             if name:
-                new_emp = {
+                st.session_state.all_employees.append({
                     "name": name, "degree": deg, "base": b_sal, 
                     "end": e_date, "actions": st.session_state.temp_actions.copy(),
                     "mode": calc_mode
-                }
-                st.session_state.all_employees.append(new_emp)
-                st.session_state.temp_actions = [] # تصفير الحركات للموظف القادم
-                st.success(f"تمت إضافة {name} بنجاح!")
+                })
+                st.session_state.temp_actions = [] 
+                st.success(f"تمت إضافة {name} إلى القائمة!")
                 st.rerun()
-            else: st.error("يرجى كتابة اسم الموظف")
+            else: st.error("يرجى إدخال اسم الموظف أولاً")
 
 # ---------------------------------------------------------
-# عرض ومعالجة البيانات
+# منطق الحساب (RTL & Multi-Employee)
 # ---------------------------------------------------------
 def calculate_diffs(emp):
     rates = {"بكالوريوس": 0.45, "دبلوم": 0.55, "ماجستير": 0.75, "دكتوراه": 1.0, "اعدادية": 0.25, "متوسطة": 0.15}
@@ -150,10 +161,10 @@ def calculate_diffs(emp):
         if p_year is None: eff_diff = b_diff; note = "بداية"
         else:
             is_new_year = (curr['date'].year > p_year)
-            if emp['mode'] == "المضاعفة دائماً (تراكمي)" or is_new_year:
+            if emp['mode'] == "المضاعفة دائماً (تراكم مستمر)" or is_new_year:
                 eff_diff = b_diff + cum_diff; note = "تراكمي"
             else:
-                eff_diff = b_diff; note = "سنة واحدة"
+                eff_diff = b_diff; note = "نفس السنة"
         
         cum_diff += b_diff
         next_d = emp['actions'][i+1]['date'] if i < len(emp['actions'])-1 else emp['end']
@@ -163,64 +174,79 @@ def calculate_diffs(emp):
         if months > 0:
             sub = eff_diff * months
             total_nom += sub
-            rows.append(f"<tr><td>{curr['type']}</td><td>{months}</td><td>{eff_diff:,}</td><td>{sub:,}</td><td>{note}</td></tr>")
+            rows.append(f"""
+                <tr>
+                    <td>{curr['type']}</td>
+                    <td>{curr['order_no']}</td>
+                    <td>{months}</td>
+                    <td>{eff_diff:,}</td>
+                    <td>{sub:,}</td>
+                    <td>{note}</td>
+                </tr>
+            """)
         p_sal = curr['salary']; p_year = curr['date'].year
     
     return rows, total_nom, total_nom * rate
 
 # ---------------------------------------------------------
-# منطقة الطباعة الكبرى
+# عرض التقارير النهائية للطباعة الجماعية
 # ---------------------------------------------------------
 if st.session_state.all_employees:
     st.markdown("---")
-    st.markdown(f'<h3 class="no-print">👥 الموظفون المضافون حالياً: ({len(st.session_state.all_employees)})</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h2 class="no-print">👥 معاينة قائمة الموظفين ({len(st.session_state.all_employees)})</h2>', unsafe_allow_html=True)
     
-    # زر الطباعة الجماعي
-    st.markdown('<div class="no-print" style="text-align:center; margin: 20px 0;">', unsafe_allow_html=True)
-    if st.button("🖨️ طباعة كشوفات جميع الموظفين (A4)", use_container_width=True):
+    if st.button("🖨️ طباعة جميع الكشوفات (A4)", use_container_width=True):
         st.markdown('<script>window.print();</script>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # توليد التقارير
-    all_reports_html = ""
+    all_html = ""
     for emp in st.session_state.all_employees:
         rows, t_nom, t_net = calculate_diffs(emp)
         report = f"""
         <div class="employee-card">
-            <div style="text-align: center; border: 2px solid black; padding: 10px; margin-bottom: 15px;">
+            <div style="text-align: center; border: 2px solid black; padding: 10px; margin-bottom: 20px;">
                 <h3 style="margin:0;">المديرية العامة لتربية محافظة الديوانية</h3>
-                <p style="margin:5px;">كشف فروقات الموظف: {emp['name']} | م. مصطفى حسن</p>
+                <p style="margin:5px;">كشف فروقات الرواتب | إعداد: م. مصطفى حسن</p>
             </div>
+            
             <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:10px;">
+                <span>الاسم: {emp['name']}</span>
                 <span>الشهادة: {emp['degree']}</span>
                 <span>تاريخ الغلق: {emp['end']}</span>
             </div>
+
             <table class="report-table">
                 <thead>
-                    <tr><th>الحركة</th><th>أشهر</th><th>الفرق</th><th>الاسمي</th><th>ملاحظة</th></tr>
+                    <tr>
+                        <th>نوع الحركة</th>
+                        <th>رقم الأمر</th>
+                        <th>الأشهر</th>
+                        <th>الفرق الشهري</th>
+                        <th>الاسمي الكلي</th>
+                        <th>ملاحظات</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {''.join(rows)}
-                    <tr style="background-color:#eee; font-weight:bold;">
-                        <td colspan="3">المجموع الاسمي</td>
+                    <tr style="background-color:#f0f0f0; font-weight:bold;">
+                        <td colspan="4" style="text-align:left; padding-left:15px;">مجموع الفرق الاسمي</td>
                         <td colspan="2">{t_nom:,} دينار</td>
                     </tr>
-                    <tr style="background-color:#ddd; font-weight:bold;">
-                        <td colspan="3">الصافي المستحق للقبض</td>
+                    <tr style="background-color:#e0e0e0; font-weight:bold;">
+                        <td colspan="4" style="text-align:left; padding-left:15px;">الصافي المستحق (بعد نسبة الشهادة)</td>
                         <td colspan="2">{t_net:,.0f} دينار</td>
                     </tr>
                 </tbody>
             </table>
-            <div style="margin-top:30px; display:flex; justify-content:space-around; text-align:center; font-size:12px;">
-                <div>منظم الجدول<br>__________</div>
-                <div>التدقيق والمراجعة<br>__________</div>
-                <div>مدير الحسابات<br>__________</div>
+
+            <div style="margin-top:50px; display:flex; justify-content:space-around; text-align:center; font-weight:bold; font-size:14px;">
+                <div>منظم الجدول<br><br>__________</div>
+                <div>التدقيق<br><br>__________</div>
+                <div>مدير الحسابات<br><br>__________</div>
             </div>
         </div>
         """
-        all_reports_html += report
+        all_html += report
     
-    st.markdown(all_reports_html, unsafe_allow_html=True)
-
+    st.markdown(all_html, unsafe_allow_html=True)
 else:
-    st.info("القائمة فارغة حالياً. ابدأ بإضافة الموظفين من الأعلى.")
+    st.info("القائمة فارغة. يرجى إضافة موظفين من الأعلى للبدء.")
