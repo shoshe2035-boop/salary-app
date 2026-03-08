@@ -2,28 +2,84 @@ import streamlit as st
 from datetime import date, timedelta
 import pandas as pd
 import io
+from openpyxl.styles import Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 # ---------------------------------------------------------
 # إعدادات الصفحة والأنماط
 # ---------------------------------------------------------
 st.set_page_config(page_title="نظام الفروقات الجماعي", layout="wide")
 
+# تحسين الأنماط لظهور النصوص في الجداول بشكل داكن
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-    html, body, .stApp { direction: rtl !important; text-align: right !important; background-color: #f8f9fa !important; font-family: 'Cairo', sans-serif !important; color: #212529 !important; }
-    [data-testid="stSidebar"] { background-color: #1E1E2F !important; }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-    .stButton button { background-color: #1E3A8A !important; color: white !important; border-radius: 8px; border: none; }
-    .stButton button:hover { background-color: #0F2B5C !important; }
-    div[data-baseweb="input"] input, .stNumberInput input, .stDateInput input, .stSelectbox div {
-        background-color: white !important; color: black !important; border: 1px solid #ced4da !important; direction: rtl !important;
+    html, body, .stApp { 
+        direction: rtl !important; 
+        text-align: right !important; 
+        background-color: #f8f9fa !important; 
+        font-family: 'Cairo', sans-serif !important; 
+        color: #212529 !important; 
     }
-    label p { color: #1E3A8A !important; font-weight: 600; }
-    .printable-report { background-color: white !important; padding: 30px; border: 2px solid #1E3A8A; margin-bottom: 20px; page-break-after: always; }
-    .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .report-table th { background-color: #1E3A8A !important; color: white !important; border: 1px solid #dee2e6; padding: 8px; }
-    .report-table td { border: 1px solid #dee2e6; padding: 8px; color: black !important; }
+    [data-testid="stSidebar"] { 
+        background-color: #1E1E2F !important; 
+    }
+    [data-testid="stSidebar"] * { 
+        color: #FFFFFF !important; 
+    }
+    .stButton button { 
+        background-color: #1E3A8A !important; 
+        color: white !important; 
+        border-radius: 8px; 
+        border: none; 
+    }
+    .stButton button:hover { 
+        background-color: #0F2B5C !important; 
+    }
+    div[data-baseweb="input"] input, .stNumberInput input, .stDateInput input, .stSelectbox div {
+        background-color: white !important; 
+        color: black !important; 
+        border: 1px solid #ced4da !important; 
+        direction: rtl !important;
+    }
+    label p { 
+        color: #1E3A8A !important; 
+        font-weight: 600; 
+    }
+    /* تحسين جداول البيانات */
+    .stDataFrame, .stTable {
+        color: black !important;
+    }
+    .stDataFrame table, .stTable table {
+        color: black !important;
+        background-color: white !important;
+    }
+    .stDataFrame td, .stTable td {
+        color: black !important;
+    }
+    .printable-report { 
+        background-color: white !important; 
+        padding: 30px; 
+        border: 2px solid #1E3A8A; 
+        margin-bottom: 20px; 
+        page-break-after: always; 
+    }
+    .report-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 10px; 
+    }
+    .report-table th { 
+        background-color: #1E3A8A !important; 
+        color: white !important; 
+        border: 1px solid #dee2e6; 
+        padding: 8px; 
+    }
+    .report-table td { 
+        border: 1px solid #dee2e6; 
+        padding: 8px; 
+        color: black !important; 
+    }
     @media print {
         .no-print { display: none !important; }
         .printable-report { border: 2px solid #000 !important; box-shadow: none; page-break-after: always; }
@@ -91,13 +147,27 @@ def calculate_employee(emp):
     return rows_html, total_nominal, net
 
 # ---------------------------------------------------------
-# دالة إنشاء ملف Excel (باستخدام openpyxl)
+# دالة إنشاء ملف Excel مع تنسيق جاهز للطباعة
 # ---------------------------------------------------------
 def generate_excel():
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        workbook = writer.book
+        # تنسيق الرأس
+        header_font = Font(bold=True, size=12)
+        header_alignment = Alignment(horizontal='center', vertical='center')
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
         for emp in st.session_state.all_employees:
-            # بيانات الموظف
+            # تنظيف اسم الورقة من الأحرف غير المسموح بها
+            sheet_name = emp['name'].replace('/', '_').replace('\\', '_').replace('*', '_').replace('?', '_').replace(':', '_')[:30]
+            
+            # بيانات الموظف (صف واحد)
             df_emp = pd.DataFrame([{
                 'الموظف': emp['name'],
                 'المؤهل': emp['degree'],
@@ -105,9 +175,17 @@ def generate_excel():
                 'تاريخ النهاية': emp['end'],
                 'طريقة الاحتساب': emp['mode']
             }])
-            df_emp.to_excel(writer, sheet_name=f"{emp['name']}", index=False, startrow=0)
+            df_emp.to_excel(writer, sheet_name=sheet_name, index=False, startrow=0)
 
-            # حركات الموظف
+            # تنسيق صف البيانات
+            worksheet = writer.sheets[sheet_name]
+            for col in range(1, 6):
+                cell = worksheet.cell(row=1, column=col)
+                cell.font = header_font
+                cell.alignment = header_alignment
+                cell.border = thin_border
+
+            # حركات الموظف (جدول)
             actions_data = []
             for act in emp['actions']:
                 actions_data.append({
@@ -117,7 +195,23 @@ def generate_excel():
                     'التاريخ': act['date']
                 })
             df_actions = pd.DataFrame(actions_data)
-            df_actions.to_excel(writer, sheet_name=f"{emp['name']}", index=False, startrow=5)
+            df_actions.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3)
+
+            # تنسيق جدول الحركات
+            for col_idx, col_name in enumerate(df_actions.columns, 1):
+                cell = worksheet.cell(row=4, column=col_idx)
+                cell.font = header_font
+                cell.alignment = header_alignment
+                cell.border = thin_border
+                # ضبط عرض العمود
+                column_letter = get_column_letter(col_idx)
+                worksheet.column_dimensions[column_letter].width = max(len(col_name) + 5, 15)
+            
+            for row_idx in range(5, 5 + len(df_actions)):
+                for col_idx in range(1, 5):
+                    cell = worksheet.cell(row=row_idx, column=col_idx)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal='center')
 
             # نتائج الحساب
             _, total_nom, total_net = calculate_employee(emp)
@@ -125,7 +219,24 @@ def generate_excel():
                 'الاسمي الكلي': total_nom,
                 'الصافي المستحق': total_net
             }])
-            df_result.to_excel(writer, sheet_name=f"{emp['name']}", index=False, startrow=10)
+            df_result.to_excel(writer, sheet_name=sheet_name, index=False, startrow=8)
+
+            # تنسيق النتائج
+            for col_idx, col_name in enumerate(df_result.columns, 1):
+                cell = worksheet.cell(row=9, column=col_idx)
+                cell.font = header_font
+                cell.alignment = header_alignment
+                cell.border = thin_border
+            for row_idx in range(10, 10 + len(df_result)):
+                for col_idx in range(1, 3):
+                    cell = worksheet.cell(row=row_idx, column=col_idx)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal='center')
+                    # تنسيق الأرقام
+                    cell.number_format = '#,##0'
+
+            # إضافة خط فاصل وإجمالي
+            worksheet.cell(row=12, column=1, value="------------------------").font = Font(bold=True)
 
     output.seek(0)
     return output
@@ -143,14 +254,17 @@ with st.sidebar:
         st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
     
     if st.session_state.all_employees:
-        excel_data = generate_excel()
-        st.download_button(
-            label="📥 تصدير إلى Excel",
-            data=excel_data,
-            file_name=f"تقرير_الفروقات_{date.today()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
+        try:
+            excel_data = generate_excel()
+            st.download_button(
+                label="📥 تصدير إلى Excel (مرتب)",
+                data=excel_data,
+                file_name=f"تقرير_الفروقات_{date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء إنشاء ملف Excel: {e}")
     
     if st.button("🗑️ تصفير الكل", use_container_width=True):
         st.session_state.all_employees = []
@@ -229,10 +343,12 @@ with st.container():
             else:
                 st.error("يجب إضافة حركة واحدة على الأقل قبل الحفظ")
 
-# عرض الحركات المضافة مؤقتاً
+# عرض الحركات المضافة مؤقتاً (باستخدام dataframe لضمان وضوح النص)
 if st.session_state.current_actions:
     st.markdown("**الحركات المضافة لهذا الموظف:**")
-    st.table(st.session_state.current_actions)
+    df_display = pd.DataFrame(st.session_state.current_actions)
+    df_display.columns = ['النوع', 'رقم الأمر', 'الراتب', 'التاريخ']
+    st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 # ---------------------------------------------------------
 # عرض النتائج للموظفين المحفوظين
